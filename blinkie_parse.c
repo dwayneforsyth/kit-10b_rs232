@@ -111,7 +111,7 @@ void print_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, u
 
     sprintf(buffer,"demo=%d, msize=%d, id=%d, pattern=%d, run=%d, plock=%X%X\r\n",
                 demo_mode, user_msg_size, user_id, p_table, run, plockout[0],plockout[1]);
-    debugOut(buffer);
+    putsUSBUSART(buffer);
 
 }
 
@@ -191,14 +191,14 @@ void ParseBlinkieCommand( char * cLine) {
             run = false;
             break;
         case 'C':
-//            sprintf(buffer,"len=%d\r\n",len);
-            debugOut(buffer);
+            sprintf(buffer,"len=%d\r\n",len);
+            putsUSBUSART(buffer);
             for (i=0;i<(len-1);i+=3) {
                 x = cLine[i+1]-'0';
                 y = cLine[i+2]-'0';
                 v = cLine[i+3]-'0';
                 sprintf(buffer,"x=%d,y=%d,v=%d,\r\n",x,y,v);
-                debugOut(buffer);
+                putsUSBUSART(buffer);
 //                LEDS[x][y]=v;
             }
             break;

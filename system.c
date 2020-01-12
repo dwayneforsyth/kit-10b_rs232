@@ -265,9 +265,9 @@ led_strobe1:
       bsf   side_right_out,7, 1 // BANKED
    _endasm
 #endif
-   
+
 //    strobe_LED(side_left_out, side_right_out, strobe );
-    strobe_LED(0xAA, 0x55, strobe );
+    strobe_LED(led_data[0].red, led_data[0].green, strobe );
     strobe++;
     }
 }	//This return will be a "retfie fast", since this is in a #pragma interrupt section 

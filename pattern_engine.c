@@ -76,6 +76,10 @@ void update_pattern() {
    static unsigned char temp_red[8],temp_green[8],char_in,step;
    unsigned char led_row;
 
+   led_data[0].red = 0x55;
+   led_data[0].green = 0xAA;
+   return;
+   
 // pull extra info bytes off the front of the pattern;
 
    if (p_count == 0) {

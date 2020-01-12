@@ -200,6 +200,9 @@ void main(void) {
     unsigned char delay=1;
     
     InitializeSystem();
+    
+    led_data[0].red = 0x55;
+    led_data[0].green = 0xAA;
 
     while(1)
     {
@@ -230,7 +233,7 @@ void main(void) {
 		// Application-specific tasks.
 		// Application related code may be added here, or in the ProcessIO() function.
 //        ProcessIO();  
-        
+        APP_DeviceCDCBasicDemoTasks();
                 // Note: Other application specific actions can be placed here
         if ((wait_timer == 0) && (run == TRUE)) { 
             wait_timer = 1;
