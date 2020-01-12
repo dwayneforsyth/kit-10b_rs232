@@ -37,6 +37,12 @@
 #ifndef HARDWARE_PROFILE_PICDEM_FSUSB_K50_H
 #define HARDWARE_PROFILE_PICDEM_FSUSB_K50_H
 
+#define FLAG_FALSE 0
+#define FLAG_TRUE 1
+#define sw0                 PORTCbits.RC1
+#define sw1                 PORTEbits.RE3
+
+
     /*******************************************************************/
     /******** USB stack hardware selection options *********************/
     /*******************************************************************/

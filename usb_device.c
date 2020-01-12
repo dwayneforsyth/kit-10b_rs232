@@ -1,267 +1,81 @@
-/********************************************************************
-  File Information:
-    FileName:     	usb_device.c
-    Dependencies:	See INCLUDES section
-    Processor:		PIC18,PIC24, PIC32 and dsPIC33E USB Microcontrollers
-    Hardware:		This code is natively intended to be used on Mirochip USB
-                    demo boards.  See www.microchip.com/usb (Software & Tools 
-                    section) for list of available platforms.  The firmware may 
-                    be modified for use on other USB platforms by editing the
-    				HardwareProfile.h and HardwareProfile - [platform].h files.
-    Complier:  	    Microchip C18 (for PIC18),C30 (for PIC24 and dsPIC33E)
-                    and C32 (for PIC32)
-    Company:		Microchip Technology, Inc.
-    
-    Software License Agreement:
-    
-    The software supplied herewith by Microchip Technology Incorporated
-    (the "Company") for its PIC(r) Microcontroller is intended and
-    supplied to you, the Company's customer, for use solely and
-    exclusively on Microchip PIC Microcontroller products. The
-    software is owned by the Company and/or its supplier, and is
-    protected under applicable copyright laws. All rights are reserved.
-    Any use in violation of the foregoing restrictions may subject the
-    user to criminal sanctions under applicable laws, as well as to
-    civil liability for the breach of the terms and conditions of this
-    license.
-    
-    THIS SOFTWARE IS PROVIDED IN AN "AS IS" CONDITION. NO WARRANTIES,
-    WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
-    TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-    PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
-    IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL OR
-    CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
+// DOM-IGNORE-BEGIN
+/*******************************************************************************
+Copyright 2015 Microchip Technology Inc. (www.microchip.com)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+To request to license the code under the MLA license (www.microchip.com/mla_license), 
+please contact mla_licensing@microchip.com
+*******************************************************************************/
+//DOM-IGNORE-END
+
+/*******************************************************************************
+  USB Device Layer
+
+  Company:
+    Microchip Technology Inc.
+
+  File Name:
+    usb_device.c
 
   Summary:
-    This file contains functions, macros, definitions, variables,
-    datatypes, etc. that are required for usage with the MCHPFSUSB device
-    stack. This file should be included in projects that use the device stack. 
-    
-    This file is located in the "\<Install Directory\>\\Microchip\\USB"
-    directory.
+   Provides basic USB device functionality, including enumeration and USB
+   chapter 9 required behavior.
 
   Description:
-    USB Device Stack File
-    
-    This file contains functions, macros, definitions, variables,
-    datatypes, etc. that are required for usage with the MCHPFSUSB device
-    stack. This file should be included in projects that use the device stack.
-    
-    This file is located in the "\<Install Directory\>\\Microchip\\USB"
-    directory.
-    
-    When including this file in a new project, this file can either be
-    referenced from the directory in which it was installed or copied
-    directly into the user application folder. If the first method is
-    chosen to keep the file located in the folder in which it is installed
-    then include paths need to be added so that the library and the
-    application both know where to reference each others files. If the
-    application folder is located in the same folder as the Microchip
-    folder (like the current demo folders), then the following include
-    paths need to be added to the application's project:
-    
-    .
-    ..\\..\\MicrochipInclude
-    
-    If a different directory structure is used, modify the paths as
-    required. An example using absolute paths instead of relative paths
-    would be the following:
-    
-    C:\\Microchip Solutions\\Microchip\\Include
-    
-    C:\\Microchip Solutions\\My Demo Application 
+   Provides basic USB device functionality, including enumeration and USB
+   chapter 9 required behavior.
+*******************************************************************************/
 
-********************************************************************
- File Description:
+// *****************************************************************************
+// *****************************************************************************
+// Section: Included Files
+// *****************************************************************************
+// *****************************************************************************
+#include <xc.h>
 
- Change History:
-  Rev    Description
-  ----   -----------
-  2.6    Added USBCancelIO() function.  Moved and some stack
-         defintions to be more consistant with the host stack.
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
 
-  2.6a   Fixed issue where a SET_CONFIGURATION received could cause
-         inability to transmit on an endpoint if using ping-pong
-         and an odd number of packets had been sent on that endpoint 
+#include "usb/usb_config.h"
 
-  2.7    Fixed error where the USB error interrupt flag was not getting
-         cleared properly for PIC32 resulting in lots of extra error interrupts.
-         http://www.microchip.com/forums/tm.aspx?m=479085
+#include "usb/usb.h"
+#include "usb/usb_ch9.h"
+#include "usb/usb_device.h"
+#include "usb/usb_device_local.h"
 
-         Fixed issue with dual role mode when device run in polling
-         mode.  Interrupts were remaining enabled after the host mode
-         operation was complete.  This was incompatible with polling
-         mode operation.
-
-         Changed how the bus sensing works.  In previous revisions it
-         was impossible to use the USBDeviceDetach to detach from the
-         bus if the bus voltage was still present.  This is now
-         possible.  It was also possible to move the device to the 
-         ATTACHED state in interrupt mode even if the bus voltage 
-         wasn't available.  This is now prohibited unless VBUS is
-         present.
-         
-         Improved error case handling when the host sends more OUT
-         bytes in a control transfer than the firmware was expecting
-         to receive (based on the size parameter when calling USBEP0Receive()).
-         
-         In the USBStdSetCfgHandler(), modified the code so the USBDeviceState
-         variable only gets updated to the CONFIGURED_STATE at the end of the 
-         function.  
-
-  2.7a   Update to support the PIC18F47J53 A1 and later revision
-         devices.
-
-         Fixed an error on 16-bit and 32-bit processors where a word access
-         could be performed on a byte pointer resulting in possible address
-         errors with odd aligned pointers.
-         
-  2.8    Several changes to the way control transfers get processed,
-         so as to support the ability to allow application/class specific
-         handler code to defer the status stage.  
-         Implemented USBCtrlEPAllowStatusStage() API function.
-         Implemented USBDeferStatusStage() API function (macro).
-         These changes also greatly relax the USBDeviceTasks() calling frequency 
-         requirement, while allowing USB class handlers more flexibility.
-         
-         Also implemented the following API functions and macros, for delaying 
-         the data stage of a control transfer (with data stage):
-         USBDeferINDataStage()
-         USBDeferOUTDataStage()
-         USBOUTDataStageDeferred()
-         USBINDataStageDeferred()
-         USBCtrlEPAllowDataStage()      
-         
-         Fixed USB reset event handler issue, where the USB stack would 
-         re-initialize global interrupt settings in the interrupt context, on 
-         PIC18 devices with the stack operated in USB_INTERRUPT mode.
-         
-         Fixed handling of SET/CLEAR FEATURE (endpoint halt) host requests.
-         Previous implementation would not always initialize endpoints correctly 
-         to DATA0 DTS state after a clear feature endpoint halt request, for 
-         all ping pong mode and usage scenarios.
-         
-   2.9   Fixed an issue with STALL handling behavior on non-EP0 endpoints, for 
-         PIC24 and PIC32 devices.  
-   		  
-   		 Fixed an issue where the ep_data_in[]/ep_data_out[] flags weren't 
-   		 getting re-initialized coincident with the hardware ping pong pointer 
-   		 reset during set configuration events.
-   		 
-   		 Implemented USBGetNextHandle() API function (actually a macro, defined
-   		 in usb_device.h).
-
-   2.9d  Added build option for disabling DTS checking
-   
-   2.9f  Adding pragma for PIC18F97J94 Family BDT location.
-
-   2.9h  Updated to be able to support optional Microsoft OS Descriptors
-
-   2.9i  Updated to set UCON<SUSPND> bit on PIC16F USB devices during 
-         suspend, so as to save power.
-   
-********************************************************************/
-
-/*----------------------------------------------------------------------------------
-The USBDeviceTasks() function is responsible for detecting and processing various
-USB bus events and host requests, such as those required for USB enumeration, when
-the USB cable is first attached to the host.  This function is the main dispatcher
-routine for the USB stack.
-
-Additional API functions and macros are also provided by the USB stack, which can be 
-used to send/receive USB data to/from the host, among other things.  A full list 
-of the available implemented functions/macros are provided in the 
-"MCHPFSUSB Library Help".  For normal installations of the MCHPFSUSB Framework,
-the USB API documentation can be found from:
-
-Start menu --> (All Programs) --> Microchip --> MCHPFSUSB vX.x --> Documents --> MCHPFSUSB Library Help
-
-Once the help file is opened, the API functions/macros are described in the following section:
-Library Interface (API) --> Device/Peripheral --> Device Stack --> Interface Routines
-Additional API functions may also be provided depending upon the specific USB device class
-implemented, and these functions are also documented in the MCHPFSUSB Library Help.
-
-
-If the USB stack is operated in "USB_POLLING" mode (user selectable option in 
-usb_config.h), then the application firmware is reponsible for calling the 
-USBDeviceTasks() function periodically.  If the USB stack is operated in the 
-"USB_INTERRUPT" mode, then the application firmware does not have to directly 
-call USBDeviceTasks(), as it will execute only when necessary as an interrupt handler.
-
-In order to properly operate a USB connection, and to correctly process and respond
-to control transfers in the maximum time allowed by the USB specifications, the
-USBDeviceTasks() function/interrupt handler must be allowed to execute in a timely
-fashion.
-
-When the USB module is enabled, the USB cable is attached to the host, the USB bus
-is not in the suspend state, and the USB stack is operated in the USB_POLLING mode 
-with ping pong buffering enabled (at least) on EP0 OUT,  then the maximum allowed 
-time between calls to the USBDeviceTasks() function needs to be:
-
-The faster of:
-1.  Once per ~1.8ms, when USBDeviceState == ADR_PENDING_STATE
-2.  Once per ~9.8ms, when USBDeviceState == (any other value other than ADR_PENDING_STATE)
-3.  Fast enough to ensure the USTAT FIFO can never get full.  See additional explanation below.
-
-Additional details of the above timing limits are provided:
-
-Timing item #1: This parameter originates from the 2ms set address "recovery interval"
-specification dictated by section "9.2.6.3 Set Address Processing" of the official 
-USB 2.0 specifications.
-
-Timing item #2: This parameter originates from several "10 ms" criteria in the 
-USB 2.0 specifications.  For example, reset recovery intervals, resume recovery 
-intervals, suspend to actual current reduction, etc. have timing maximums of 10ms.
-
-Timing item #3: This is not a fixed X.X ms parameter, but depends on the  
-transaction rate implemented by the application.  The USBDeviceTasks() function is
-responsible for popping entries off the USTAT FIFO.  If the FIFO ever gets full,
-then no further USB transactions are allowed to occur, until the firmware pops entries
-off the FIFO.  In practice, this means the firmware should call USBDeviceTasks() at
-a rate at least as fast as once every three times the USBTransferOnePacket() function
-is called.  This ensures that the rate that USTAT FIFO entries are getting added to
-the FIFO is lower than the rate that the entries are getting popped off the FIFO (the
-USBDeviceTasks() function will pop up to 4 entries per call), which is a
-necessary criteria to ensure the USTAT FIFO entries don't "pile up."  Calling
-USBDeviceTasks() even more often, ex: >=1 to 1 ratio of USBDeviceTasks() to 
-USBTransferOnePacket(), adds further protection against the USTAT FIFO getting full,
-and is therefore recommended.
-
-When the USB stack is operated in USB_INTERRUPT mode, then the above timing 
-parameters should be interpreted to be the longest allowed time that the USB 
-interrupts may be masked/disabled for, before re-enabling the USB interrupts.
-
-Calling USBDeviceTasks() (or allowing USBDeviceTasks() to be called) more often 
-will still have potential USB data rate speed and processing latency benefits.
-It is also beneficial to call USBDeviceTasks() more often than theoretically 
-required, since it has been observed that not all host/drivers/bios/hubs are 
-100% consistently compliant with all timing parameters of the USB 2.0 specifications.
-Therefore, in a USB_POLLING based application, it is still suggested to call 
-USBDeviceTasks() as often as there are free CPU cycles.  This ensures best 
-performance, along with best possible compatibility with all existing USB 
-hosts/hubs (both those that are compliant and [partially] non-compliant).
-
-If ping pong buffering is not enabled on (at least) EP0 OUT, then it is required
-to call (or allow to execute) USBDeviceTasks() much more frequently (ex: once 
-per 100us, or preferrably faster).  Therefore, in all applications, it is 
-normally recommended to select either the USB_PING_PONG__FULL_PING_PONG or 
-USB_PING_PONG__EP0_OUT_ONLY mode (user option in usb_config.h), as these modes
-allow for much more relaxed timing requirements, and therefore greater application
-firmware design flexibility.
-//----------------------------------------------------------------------------------*/
-
-/** INCLUDES *******************************************************/
-#include "./usb.h"
-#include "HardwareProfile.h"
-
-#include "./usb_device_local.h"
-
-
-#if defined(USB_USE_MSD)
-    #include "./USB/usb_function_msd.h"
+#ifndef uintptr_t
+    #if  defined(__XC8__) || defined(__XC16__)
+        #define uintptr_t uint16_t
+    #elif defined (__XC32__)
+        #define uintptr_t uint32_t
+    #endif
 #endif
 
+#if defined(USB_USE_MSD)
+    #include "usb_device_msd.h"
+#endif
+
+// *****************************************************************************
+// *****************************************************************************
+// Section: File Scope or Global Constants
+// *****************************************************************************
+// *****************************************************************************
 #if !defined(USE_USB_BUS_SENSE_IO)
+    //Assume the +5V VBUS is always present (like it would be in a bus powered
+    //only application), unless USE_USB_BUS_SENSE_IO and USB_BUS_SENSE have
+    //been properly defined elsewhere in the project.
     #undef USB_BUS_SENSE
     #define USB_BUS_SENSE 1
 #endif
@@ -272,112 +86,148 @@ firmware design flexibility.
     #define _DTS_CHECKING_ENABLED _DTSEN
 #endif
 
-/** DEFINITIONS ****************************************************/
-
-/** VARIABLES ******************************************************/
-#if defined(__18CXX)
-    #pragma udata
+#if !defined(self_power)
+    //Assume the application is always bus powered, unless self_power has been
+    //defined elsewhere in the project
+    #define self_power 0    //0 = bus powered
 #endif
 
+#if !defined(USB_MAX_NUM_CONFIG_DSC)
+    //Assume the application only implements one configuration descriptor,
+    //unless otherwise specified elsewhere in the project
+    #define USB_MAX_NUM_CONFIG_DSC      1
+#endif
+
+#if defined(__XC8)
+    //Suppress expected/harmless compiler warning message about unused RAM variables
+    //and certain function pointer usage.
+    //Certain variables and function pointers are not used if you don't use all
+    //of the USB stack APIs.  However, these variables should not be
+    //removed (since they are still used/needed in some applications, and this
+    //is a common file shared by many projects, some of which rely on the "unused"
+    //variables/function pointers).
+    #pragma warning disable 1090
+    #if __XC8_VERSION > 1300
+        #pragma warning disable 1471
+    #endif
+#endif
+
+// *****************************************************************************
+// *****************************************************************************
+// Section: File Scope Data Types
+// *****************************************************************************
+// *****************************************************************************
+typedef union
+{
+    uint8_t Val;
+    struct __PACKED
+    {
+        unsigned b0:1;
+        unsigned b1:1;
+        unsigned b2:1;
+        unsigned b3:1;
+        unsigned b4:1;
+        unsigned b5:1;
+        unsigned b6:1;
+        unsigned b7:1;
+    } bits;
+} uint8_t_VAL, uint8_t_BITS;
+
+// *****************************************************************************
+// *****************************************************************************
+// Section: Variables
+// *****************************************************************************
+// *****************************************************************************
 USB_VOLATILE USB_DEVICE_STATE USBDeviceState;
-USB_VOLATILE BYTE USBActiveConfiguration;
-USB_VOLATILE BYTE USBAlternateInterface[USB_MAX_NUM_INT];
+USB_VOLATILE uint8_t USBActiveConfiguration;
+USB_VOLATILE uint8_t USBAlternateInterface[USB_MAX_NUM_INT];
 volatile BDT_ENTRY *pBDTEntryEP0OutCurrent;
 volatile BDT_ENTRY *pBDTEntryEP0OutNext;
 volatile BDT_ENTRY *pBDTEntryOut[USB_MAX_EP_NUMBER+1];
 volatile BDT_ENTRY *pBDTEntryIn[USB_MAX_EP_NUMBER+1];
-USB_VOLATILE BYTE shortPacketStatus;
-USB_VOLATILE BYTE controlTransferState;
+USB_VOLATILE uint8_t shortPacketStatus;
+USB_VOLATILE uint8_t controlTransferState;
 USB_VOLATILE IN_PIPE inPipes[1];
 USB_VOLATILE OUT_PIPE outPipes[1];
-USB_VOLATILE BYTE *pDst;
-USB_VOLATILE BOOL RemoteWakeup;
-USB_VOLATILE BOOL USBBusIsSuspended;
+USB_VOLATILE uint8_t *pDst;
+USB_VOLATILE bool RemoteWakeup;
+USB_VOLATILE bool USBBusIsSuspended;
 USB_VOLATILE USTAT_FIELDS USTATcopy;
-USB_VOLATILE BYTE endpoint_number;
-USB_VOLATILE BOOL BothEP0OutUOWNsSet;
+USB_VOLATILE uint8_t endpoint_number;
+USB_VOLATILE bool BothEP0OutUOWNsSet;
 USB_VOLATILE EP_STATUS ep_data_in[USB_MAX_EP_NUMBER+1];
 USB_VOLATILE EP_STATUS ep_data_out[USB_MAX_EP_NUMBER+1];
-USB_VOLATILE BYTE USBStatusStageTimeoutCounter;
-volatile BOOL USBDeferStatusStagePacket;
-volatile BOOL USBStatusStageEnabledFlag1;
-volatile BOOL USBStatusStageEnabledFlag2;
-volatile BOOL USBDeferINDataStagePackets;
-volatile BOOL USBDeferOUTDataStagePackets;
-
-
-#if (USB_PING_PONG_MODE == USB_PING_PONG__NO_PING_PONG)
-    #define BDT_NUM_ENTRIES      ((USB_MAX_EP_NUMBER + 1) * 2)
-#elif (USB_PING_PONG_MODE == USB_PING_PONG__EP0_OUT_ONLY)
-    #define BDT_NUM_ENTRIES      (((USB_MAX_EP_NUMBER + 1) * 2)+1)
-#elif (USB_PING_PONG_MODE == USB_PING_PONG__FULL_PING_PONG)
-    #define BDT_NUM_ENTRIES      ((USB_MAX_EP_NUMBER + 1) * 4)
-#elif (USB_PING_PONG_MODE == USB_PING_PONG__ALL_BUT_EP0)
-    #define BDT_NUM_ENTRIES      (((USB_MAX_EP_NUMBER + 1) * 4)-2)
-#else
-    #error "No ping pong mode defined."
-#endif
+USB_VOLATILE uint8_t USBStatusStageTimeoutCounter;
+volatile bool USBDeferStatusStagePacket;
+volatile bool USBStatusStageEnabledFlag1;
+volatile bool USBStatusStageEnabledFlag2;
+volatile bool USBDeferINDataStagePackets;
+volatile bool USBDeferOUTDataStagePackets;
+USB_VOLATILE uint32_t USB1msTickCount;
+USB_VOLATILE uint8_t USBTicksSinceSuspendEnd;
 
 /** USB FIXED LOCATION VARIABLES ***********************************/
-#if defined(__18CXX)
+#if defined(COMPILER_MPLAB_C18)
     #pragma udata USB_BDT=USB_BDT_ADDRESS
 #endif
 
 volatile BDT_ENTRY BDT[BDT_NUM_ENTRIES] BDT_BASE_ADDR_TAG;
 
 /********************************************************************
- * Section B: EP0 Buffer Space
+ * EP0 Buffer Space
  *******************************************************************/
 volatile CTRL_TRF_SETUP SetupPkt CTRL_TRF_SETUP_ADDR_TAG;
-volatile BYTE CtrlTrfData[USB_EP0_BUFF_SIZE] CTRL_TRF_DATA_ADDR_TAG;
+volatile uint8_t CtrlTrfData[USB_EP0_BUFF_SIZE] CTRL_TRF_DATA_ADDR_TAG;
 
 /********************************************************************
- * Section C: non-EP0 Buffer Space
+ * non-EP0 Buffer Space
  *******************************************************************/
 #if defined(USB_USE_MSD)
-	//volatile far USB_MSD_CBW_CSW msd_cbw_csw;
-	volatile USB_MSD_CBW msd_cbw;
-	volatile USB_MSD_CSW msd_csw;
-	//#pragma udata
+    //Check if the MSD application specific USB endpoint buffer placement address 
+    //macros have already been defined or not (ex: in a processor specific header)
+    //The msd_cbw and msd_csw buffers must be USB module accessible (and therefore
+    //must be at a certain address range on certain microcontrollers).
+    #if !defined(MSD_CBW_ADDR_TAG)
+        //Not previously defined.  Assume in this case all microcontroller RAM is
+        //USB module accessible, and therefore, no specific address tag value is needed.
+        #define MSD_CBW_ADDR_TAG
+        #define MSD_CSW_ADDR_TAG
+    #endif
+	volatile USB_MSD_CBW msd_cbw MSD_CBW_ADDR_TAG;  //Must be located in USB module accessible RAM
+	volatile USB_MSD_CSW msd_csw MSD_CSW_ADDR_TAG;  //Must be located in USB module accessible RAM
 
-	#if defined(__18CXX)
-		#pragma udata myMSD=MSD_BUFFER_ADDRESS
+    #if defined(__18CXX) || defined(__XC8)
+        volatile char msd_buffer[512] @ MSD_BUFFER_ADDRESS;
+    #else
+        volatile char msd_buffer[512];
 	#endif
-	volatile char msd_buffer[512];
 #endif
 
-
-
-////Depricated in v2.2 - will be removed in a future revision
+//Depricated in v2.2 - will be removed in a future revision
 #if !defined(USB_USER_DEVICE_DESCRIPTOR)
     //Device descriptor
-    extern ROM USB_DEVICE_DESCRIPTOR device_dsc;
+    extern const USB_DEVICE_DESCRIPTOR device_dsc;
 #else
     USB_USER_DEVICE_DESCRIPTOR_INCLUDE;
 #endif
 
 #if !defined(USB_USER_CONFIG_DESCRIPTOR)
     //Array of configuration descriptors
-    extern ROM BYTE *ROM USB_CD_Ptr[];
+    extern const uint8_t *const USB_CD_Ptr[];
 #else
     USB_USER_CONFIG_DESCRIPTOR_INCLUDE;
 #endif
 
-extern ROM BYTE *ROM USB_SD_Ptr[];
+extern const uint8_t *const USB_SD_Ptr[];
 
-/** DECLARATIONS ***************************************************/
-#if defined(__18CXX)
-    #pragma code
-#endif
 
-/** Macros *********************************************************/
+// *****************************************************************************
+// *****************************************************************************
+// Section: Private and External Prototypes
+// *****************************************************************************
+// *****************************************************************************
+extern bool USER_USB_CALLBACK_EVENT_HANDLER(USB_EVENT event, void *pdata, uint16_t size);
 
-/** Function Prototypes ********************************************/
-//External
-//This is the prototype for the required user event handler
-BOOL USER_USB_CALLBACK_EVENT_HANDLER(int event, void *pdata, WORD size);
-
-//Internal Functions
 static void USBCtrlEPService(void);
 static void USBCtrlTrfSetupHandler(void);
 static void USBCtrlTrfInHandler(void);
@@ -390,55 +240,16 @@ static void USBStdSetCfgHandler(void);
 static void USBStdGetStatusHandler(void);
 static void USBStdFeatureReqHandler(void);
 static void USBCtrlTrfOutHandler(void);
-static void USBConfigureEndpoint(BYTE EPNum, BYTE direction);
+static void USBConfigureEndpoint(uint8_t EPNum, uint8_t direction);
 static void USBWakeFromSuspend(void);
 static void USBSuspend(void);
 static void USBStallHandler(void);
 
-//static BOOL USBIsTxBusy(BYTE EPNumber);
-//static void USBPut(BYTE EPNum, BYTE Data);
-//static void USBEPService(void);
-//static void USBProtocolResetHandler(void);
-
-/******************************************************************************/
-/** Function Implementations *************************************************/
-/******************************************************************************/
-
-/******************************************************************************/
-/** Internal Macros *********************************************************/
-/******************************************************************************/
-
-/****************************************************************************
-  Function:
-    void USBAdvancePingPongBuffer(BDT_ENTRY** buffer)
-
-  Description:
-    This function will advance the passed pointer to the next buffer based on
-    the ping pong option setting.  This function should be used for EP1-EP15
-    only.  This function is not valid for EP0.
-
-  Precondition:
-    None
-
-  Parameters:
-    BDT_ENTRY** - pointer to the BDT_ENTRY pointer that you want to be advanced
-    to the next buffer state
-
-  Return Values:
-    None
-
-  Remarks:
-    None
-
-  ***************************************************************************/
-#define USBAdvancePingPongBuffer(buffer) ((BYTE_VAL*)buffer)->Val ^= USB_NEXT_PING_PONG;
-#define USBHALPingPongSetToOdd(buffer)   {((BYTE_VAL*)buffer)->Val |= USB_NEXT_PING_PONG;}
-#define USBHALPingPongSetToEven(buffer)  {((BYTE_VAL*)buffer)->Val &= ~USB_NEXT_PING_PONG;}
-
-
-/******************************************************************************/
-/** External API Functions ****************************************************/
-/******************************************************************************/
+// *****************************************************************************
+// *****************************************************************************
+// Section: Macros or Functions
+// *****************************************************************************
+// *****************************************************************************
 
 /**************************************************************************
     Function:
@@ -465,10 +276,14 @@ static void USBStallHandler(void);
   ***************************************************************************/
 void USBDeviceInit(void)
 {
-    BYTE i;
+    uint8_t i;
 
     USBDisableInterrupts();
 
+    //Make sure that if a GPIO output driver exists on VBUS, that it is 
+    //tri-stated to avoid potential contention with the host
+    USB_HAL_VBUSTristate();
+    
     // Clear all USB error flags
     USBClearInterruptRegister(U1EIR);  
        
@@ -489,7 +304,7 @@ void USBDeviceInit(void)
     USBSetBDTAddress(BDT);
 
     //Clear all of the BDT entries
-    for(i=0;i<(sizeof(BDT)/sizeof(BDT_ENTRY));i++)
+    for(i = 0; i < (sizeof(BDT)/sizeof(BDT_ENTRY)); i++)
     {
         BDT[i].Val = 0x00;
     }
@@ -507,33 +322,33 @@ void USBDeviceInit(void)
     USBPingPongBufferReset = 0;
 
     // Flush any pending transactions
-    while(USBTransactionCompleteIF == 1)      
+    do
     {
         USBClearInterruptFlag(USBTransactionCompleteIFReg,USBTransactionCompleteIFBitNum);
         //Initialize USB stack software state variables
         inPipes[0].info.Val = 0;
         outPipes[0].info.Val = 0;
         outPipes[0].wCount.Val = 0;
-    }
+    }while(USBTransactionCompleteIF == 1);
 
-    //Set flags to TRUE, so the USBCtrlEPAllowStatusStage() function knows not to
+    //Set flags to true, so the USBCtrlEPAllowStatusStage() function knows not to
     //try and arm a status stage, even before the first control transfer starts.
-    USBStatusStageEnabledFlag1 = TRUE;  
-    USBStatusStageEnabledFlag2 = TRUE;
+    USBStatusStageEnabledFlag1 = true;
+    USBStatusStageEnabledFlag2 = true;
     //Initialize other flags
-    USBDeferINDataStagePackets = FALSE;
-    USBDeferOUTDataStagePackets = FALSE;
-    USBBusIsSuspended = FALSE;
+    USBDeferINDataStagePackets = false;
+    USBDeferOUTDataStagePackets = false;
+    USBBusIsSuspended = false;
 
-	//Initialize all pBDTEntryIn[] and pBDTEntryOut[]
-	//pointers to NULL, so they don't get used inadvertently.  
-	for(i = 0; i < (BYTE)(USB_MAX_EP_NUMBER+1u); i++)
-	{
-		pBDTEntryIn[i] = 0u;
-		pBDTEntryOut[i] = 0u;		
-		ep_data_in[i].Val = 0u;
+    //Initialize all pBDTEntryIn[] and pBDTEntryOut[]
+    //pointers to NULL, so they don't get used inadvertently.
+    for(i = 0; i < (uint8_t)(USB_MAX_EP_NUMBER+1u); i++)
+    {
+        pBDTEntryIn[i] = 0u;
+        pBDTEntryOut[i] = 0u;
+        ep_data_in[i].Val = 0u;
         ep_data_out[i].Val = 0u;
-	}
+    }
 
     //Get ready for the first packet
     pBDTEntryIn[0] = (volatile BDT_ENTRY*)&BDT[EP0_IN_EVEN];
@@ -542,14 +357,20 @@ void USBDeviceInit(void)
 	//Prepare for the first SETUP on EP0 OUT
     BDT[EP0_OUT_EVEN].ADR = ConvertToPhysicalAddress(&SetupPkt);
     BDT[EP0_OUT_EVEN].CNT = USB_EP0_BUFF_SIZE;
-    BDT[EP0_OUT_EVEN].STAT.Val = _USIE|_DAT0|_BSTALL;
+    BDT[EP0_OUT_EVEN].STAT.Val = _DAT0|_BSTALL;
+    BDT[EP0_OUT_EVEN].STAT.Val |= _USIE;
 
     // Clear active configuration
     USBActiveConfiguration = 0;     
 
-    //Indicate that we are now in the detached state        
+    USB1msTickCount = 0;            //Keeps track of total number of milliseconds since calling USBDeviceInit() when first initializing the USB module/stack code.
+    USBTicksSinceSuspendEnd = 0;    //Keeps track of the number of milliseconds since a suspend condition has ended.
+
+    //Indicate that we are now in the detached state
     USBDeviceState = DETACHED_STATE;
 }
+
+
 
 /**************************************************************************
   Function:
@@ -612,7 +433,7 @@ void USBDeviceInit(void)
         {
             USBDeviceTasks(); //Takes care of enumeration and other USB events
             if((USBGetDeviceState() \< CONFIGURED_STATE) ||
-               (USBIsDeviceSuspended() == TRUE))
+               (USBIsDeviceSuspended() == true))
             {
                 //Either the device is not configured or we are suspended,
                 // so we don't want to execute any USB related application code
@@ -640,7 +461,7 @@ void USBDeviceInit(void)
     frequency, or clock switches to a lower frequency), then the USBDeviceTasks()
     function must still be called periodically, at a rate frequent enough to 
     ensure the 10ms resume recovery interval USB specification is met.  Assuming
-    a worst case primary oscillator and PLL start up time of <5ms, then 
+    a worst case primary oscillator and PLL start up time of less than 5ms, then
     USBDeviceTasks() should be called once every 5ms in this scenario.
    
     When the USB cable is detached, or the USB host is not actively powering 
@@ -652,42 +473,30 @@ void USBDeviceInit(void)
     is still needed.  For self or dual self/bus powered USB applications, see 
     the USBDeviceAttach() and USBDeviceDetach() API documentation for additional 
     considerations.
-                     
-  **************************************************************************/
-
-#if defined(USB_INTERRUPT) 
-#if defined(__18CXX) || defined (_PIC14E)
-    void USBDeviceTasks(void)
-  #elif defined(__C30__) || defined __XC16__
-    void __attribute__((interrupt,auto_psv)) _USB1Interrupt()
-  #elif defined(__PIC32MX__)
-    void __attribute__((interrupt(),vector(_USB_1_VECTOR))) _USB1Interrupt( void ) 
-  #endif
-#else
+    ***************************************************************************/
 void USBDeviceTasks(void)
-#endif
 {
-    BYTE i;
+    uint8_t i;
 
-#ifdef USB_SUPPORT_OTG
-    //SRP Time Out Check
-    if (USBOTGSRPIsReady())
-    {
-        if (USBT1MSECIF && USBT1MSECIE)
+    #ifdef USB_SUPPORT_OTG
+        //SRP Time Out Check
+        if (USBOTGSRPIsReady())
         {
-            if (USBOTGGetSRPTimeOutFlag())
+            if (USBT1MSECIF && USBT1MSECIE)
             {
-                if (USBOTGIsSRPTimeOutExpired())
+                if (USBOTGGetSRPTimeOutFlag())
                 {
-                    USB_OTGEventHandler(0,OTG_EVENT_SRP_FAILED,0,0);
-                }       
-            }
+                    if (USBOTGIsSRPTimeOutExpired())
+                    {
+                        USB_OTGEventHandler(0,OTG_EVENT_SRP_FAILED,0,0);
+                    }
+                }
 
-            //Clear Interrupt Flag
-            USBClearInterruptFlag(USBT1MSECIFReg,USBT1MSECIFBitNum);
+                //Clear Interrupt Flag
+                USBClearInterruptFlag(USBT1MSECIFReg,USBT1MSECIFBitNum);
+            }
         }
-    }
-#endif
+    #endif
 
     #if defined(USB_POLLING)
     //If the interrupt option is selected then the customer is required
@@ -791,7 +600,14 @@ void USBDeviceTasks(void)
 
         if(!USBSE0Event)
         {
-            USBClearInterruptRegister(U1IR);// Clear all USB interrupts
+            //We recently attached, make sure we are in a clean state
+            #if defined(__dsPIC33E__) || defined(_PIC24E__) || defined(__PIC32MM__)
+                U1IR = 0xFFEF;  //Preserve IDLEIF info, so we can detect suspend
+                                //during attach de-bounce interval
+            #else
+                USBClearInterruptRegister(U1IR);
+            #endif
+
             #if defined(USB_POLLING)
                 U1IE=0;                        // Mask all USB interrupts
             #endif
@@ -873,41 +689,46 @@ void USBDeviceTasks(void)
         #ifdef  USB_SUPPORT_OTG 
             //If Suspended, Try to switch to Host
             USBOTGSelectRole(ROLE_HOST);
+            USBClearInterruptFlag(USBIdleIFReg,USBIdleIFBitNum);
         #else
             USBSuspend();
         #endif
-        
-        USBClearInterruptFlag(USBIdleIFReg,USBIdleIFBitNum);
     }
 
+    #if defined(__XC16__) || defined(__C30__) || defined(__XC32__)
+        //Check if a 1ms interval has elapsed.	
+        if(USBT1MSECIF)
+        {
+            USBClearInterruptFlag(USBT1MSECIFReg, USBT1MSECIFBitNum);
+            USBIncrement1msInternalTimers();
+        }
+    #endif
+
+    //Start-of-Frame Interrupt
     if(USBSOFIF)
     {
+        //Call the user SOF event callback if enabled.
         if(USBSOFIE)
         {
             USB_SOF_HANDLER(EVENT_SOF,0,1);
         }    
         USBClearInterruptFlag(USBSOFIFReg,USBSOFIFBitNum);
-        
+
+        #if defined(__XC8__) || defined(__C18__)
+            USBIncrement1msInternalTimers();
+        #endif
+
         #if defined(USB_ENABLE_STATUS_STAGE_TIMEOUTS)
-            //Supporting this feature requires a 1ms timebase for keeping track of the timeout interval.
+            //Supporting this feature requires a 1ms time base for keeping track of the timeout interval.
             #if(USB_SPEED_OPTION == USB_LOW_SPEED)
                 #warning "Double click this message.  See inline code comments."
                 //The "USB_ENABLE_STATUS_STAGE_TIMEOUTS" feature is optional and is
                 //not strictly needed in all applications (ex: those that never call 
                 //USBDeferStatusStage() and don't use host to device (OUT) control
                 //transfers with data stage).  
-                //However, if this feature is enabled and used, it requires a timer 
-                //(preferrably 1ms) to decrement the USBStatusStageTimeoutCounter.  
-                //In USB Full Speed applications, the host sends Start-of-Frame (SOF) 
-                //packets at a 1ms rate, which generates SOFIF interrupts.
-                //These interrupts can be used to decrement USBStatusStageTimeoutCounter as shown 
-                //below.  However, the host does not send SOF packets to Low Speed devices.  
-                //Therefore, some other method  (ex: using a general purpose microcontroller 
-                //timer, such as Timer0) needs to be implemented to call and execute the below code
-                //at a once/1ms rate, in a low speed USB application.
-                //Note: Pre-condition to executing the below code: USBDeviceInit() should have
-                //been called at least once (since the last microcontroller reset/power up), 
-                //prior to executing the below code.
+                //However, if this feature is enabled and used in a low speed application,
+                //it is required for the application code to periodically call the
+                //USBIncrement1msInternalTimers() function at a nominally 1ms rate.
             #endif
             
             //Decrement our status stage counter.
@@ -952,38 +773,38 @@ void USBDeviceTasks(void)
      */
     if(USBDeviceState < DEFAULT_STATE)
     {
-	    USBClearUSBInterrupt();
-	    return; 
-	}  
+        USBClearUSBInterrupt();
+        return;
+    }  
 
     /*
      * Task D: Servicing USB Transaction Complete Interrupt
      */
     if(USBTransactionCompleteIE)
     {
-	    for(i = 0; i < 4u; i++)	//Drain or deplete the USAT FIFO entries.  If the USB FIFO ever gets full, USB bandwidth 
-		{						//utilization can be compromised, and the device won't be able to receive SETUP packets.
-		    if(USBTransactionCompleteIF)
-		    {
-    		    //Save and extract USTAT register info.  Will use this info later.
+        for(i = 0; i < 4u; i++)	//Drain or deplete the USAT FIFO entries.  If the USB FIFO ever gets full, USB bandwidth
+        {						//utilization can be compromised, and the device won't be able to receive SETUP packets.
+            if(USBTransactionCompleteIF)
+            {
+                //Save and extract USTAT register info.  Will use this info later.
                 USTATcopy.Val = U1STAT;
                 endpoint_number = USBHALGetLastEndpoint(USTATcopy);
-                
+
                 USBClearInterruptFlag(USBTransactionCompleteIFReg,USBTransactionCompleteIFBitNum);
-                
+
                 //Keep track of the hardware ping pong state for endpoints other
                 //than EP0, if ping pong buffering is enabled.
-                #if (USB_PING_PONG_MODE == USB_PING_PONG__ALL_BUT_EP0) || (USB_PING_PONG_MODE == USB_PING_PONG__FULL_PING_PONG) 
-                    if(USBHALGetLastDirection(USTATcopy) == OUT_FROM_HOST)
-                    {
-                        ep_data_out[endpoint_number].bits.ping_pong_state ^= 1;
-                    }   
-                    else
-                    {
-                        ep_data_in[endpoint_number].bits.ping_pong_state ^= 1;
-                    }         
-                #endif    
-                
+                #if (USB_PING_PONG_MODE == USB_PING_PONG__ALL_BUT_EP0) || (USB_PING_PONG_MODE == USB_PING_PONG__FULL_PING_PONG)
+                if(USBHALGetLastDirection(USTATcopy) == OUT_FROM_HOST)
+                {
+                    ep_data_out[endpoint_number].bits.ping_pong_state ^= 1;
+                }
+                else
+                {
+                    ep_data_in[endpoint_number].bits.ping_pong_state ^= 1;
+                }
+                #endif
+
                 //USBCtrlEPService only services transactions over EP0.
                 //It ignores all other EP transactions.
                 if(endpoint_number == 0)
@@ -992,20 +813,22 @@ void USBDeviceTasks(void)
                 }
                 else
                 {
-                    USB_TRANSFER_COMPLETE_HANDLER(EVENT_TRANSFER, (BYTE*)&USTATcopy.Val, 0);
+                    USB_TRANSFER_COMPLETE_HANDLER(EVENT_TRANSFER, (uint8_t*)&USTATcopy.Val, 0);
                 }
-		    }//end if(USBTransactionCompleteIF)
-		    else
-		    	break;	//USTAT FIFO must be empty.
-		}//end for()
-	}//end if(USBTransactionCompleteIE)   
+            }//end if(USBTransactionCompleteIF)
+            else
+            {
+                break;	//USTAT FIFO must be empty.
+            }
+        }//end for()
+    }//end if(USBTransactionCompleteIE)
 
     USBClearUSBInterrupt();
 }//end of USBDeviceTasks()
 
 /*******************************************************************************
   Function:
-        void USBEnableEndpoint(BYTE ep, BYTE options)
+        void USBEnableEndpoint(uint8_t ep, uint8_t options)
     
   Summary:
     This function will enable the specified endpoint with the specified
@@ -1030,8 +853,8 @@ void USBDeviceTasks(void)
   Conditions:
     None
   Input:
-    BYTE ep -       the endpoint to be configured
-    BYTE options -  optional settings for the endpoint. The options should
+    uint8_t ep -       the endpoint to be configured
+    uint8_t options -  optional settings for the endpoint. The options should
                     be ORed together to form a single options string. The
                     available optional settings for the endpoint. The
                     options should be ORed together to form a single options
@@ -1052,7 +875,7 @@ void USBDeviceTasks(void)
   Remarks:
     None                                                                                                          
   *****************************************************************************/
-void USBEnableEndpoint(BYTE ep, BYTE options)
+void USBEnableEndpoint(uint8_t ep, uint8_t options)
 {
     unsigned char* p;
         
@@ -1081,7 +904,7 @@ void USBEnableEndpoint(BYTE ep, BYTE options)
 
 /*************************************************************************
   Function:
-    USB_HANDLE USBTransferOnePacket(BYTE ep, BYTE dir, BYTE* data, BYTE len)
+    USB_HANDLE USBTransferOnePacket(uint8_t ep, uint8_t dir, uint8_t* data, uint8_t len)
     
   Summary:
     Transfers a single packet (one transaction) of data on the USB bus.
@@ -1096,7 +919,7 @@ void USBEnableEndpoint(BYTE ep, BYTE options)
     data over the USB port.  
 
     The USBTransferOnePacket() is intended for use with all application 
-    endpoints.  It is not used for sending or receiving applicaiton data 
+    endpoints.  It is not used for sending or receiving application data 
     through endpoint 0 by using control transfers.  Separate API 
     functions, such as USBEP0Receive(), USBEP0SendRAMPtr(), and
     USBEP0SendROMPtr() are provided for this purpose.
@@ -1123,7 +946,7 @@ void USBEnableEndpoint(BYTE ep, BYTE options)
 	        //INPacket[2] = ... (fill in the rest of the packet data)
 	      
             //Send the data contained in the INPacket[] array through endpoint "EP_NUM"
-            USBInHandle = USBTransferOnePacket(EP_NUM,IN_TO_HOST,(BYTE*)&INPacket[0],sizeof(INPacket));
+            USBInHandle = USBTransferOnePacket(EP_NUM,IN_TO_HOST,(uint8_t*)&INPacket[0],sizeof(INPacket));
         }
     }
     </code>
@@ -1141,14 +964,14 @@ void USBEnableEndpoint(BYTE ep, BYTE options)
         USBTransferOnePacket().
  					
   Input:
-    BYTE ep - The endpoint number that the data will be transmitted or 
+    uint8_t ep - The endpoint number that the data will be transmitted or
 	          received on
-    BYTE dir - The direction of the transfer
+    uint8_t dir - The direction of the transfer
                This value is either OUT_FROM_HOST or IN_TO_HOST
-    BYTE* data - For IN transactions: pointer to the RAM buffer containing 
+    uint8_t* data - For IN transactions: pointer to the RAM buffer containing
                  the data to be sent to the host.  For OUT transactions: pointer
                  to the RAM buffer that the received data should get written to.
-   BYTE len - Length of the data needing to be sent (for IN transactions).
+   uint8_t len - Length of the data needing to be sent (for IN transactions).
               For OUT transactions, the len parameter should normally be set
               to the endpoint size specified in the endpoint descriptor.    
 
@@ -1169,7 +992,7 @@ void USBEnableEndpoint(BYTE ep, BYTE options)
     function first.  
     
   *************************************************************************/
-USB_HANDLE USBTransferOnePacket(BYTE ep,BYTE dir,BYTE* data,BYTE len)
+USB_HANDLE USBTransferOnePacket(uint8_t ep,uint8_t dir,uint8_t* data,uint8_t len)
 {
     volatile BDT_ENTRY* handle;
 
@@ -1189,8 +1012,8 @@ USB_HANDLE USBTransferOnePacket(BYTE ep,BYTE dir,BYTE* data,BYTE len)
     //pBDTEntryOut[ep]) is initialized before using it.
     if(handle == 0)
     {
-	    return 0;
-	}
+        return 0;
+    }
 
     //Toggle the DTS bit if required
     #if (USB_PING_PONG_MODE == USB_PING_PONG__NO_PING_PONG)
@@ -1206,18 +1029,19 @@ USB_HANDLE USBTransferOnePacket(BYTE ep,BYTE dir,BYTE* data,BYTE len)
     handle->ADR = ConvertToPhysicalAddress(data);
     handle->CNT = len;
     handle->STAT.Val &= _DTSMASK;
-    handle->STAT.Val |= _USIE | (_DTSEN & _DTS_CHECKING_ENABLED);
+    handle->STAT.Val |= (_DTSEN & _DTS_CHECKING_ENABLED);
+    handle->STAT.Val |= _USIE;
 
     //Point to the next buffer for ping pong purposes.
     if(dir != OUT_FROM_HOST)
     {
         //toggle over the to the next buffer for an IN endpoint
-        USBAdvancePingPongBuffer(&pBDTEntryIn[ep]);      
+        pBDTEntryIn[ep] = (BDT_ENTRY*)(((uintptr_t)pBDTEntryIn[ep]) ^ USB_NEXT_PING_PONG);
     }
     else
     {
         //toggle over the to the next buffer for an OUT endpoint
-        USBAdvancePingPongBuffer(&pBDTEntryOut[ep]);     
+        pBDTEntryOut[ep] = (BDT_ENTRY*)(((uintptr_t)pBDTEntryOut[ep]) ^ USB_NEXT_PING_PONG);
     }
     return (USB_HANDLE)handle;
 }
@@ -1225,7 +1049,7 @@ USB_HANDLE USBTransferOnePacket(BYTE ep,BYTE dir,BYTE* data,BYTE len)
 
 /********************************************************************
     Function:
-        void USBStallEndpoint(BYTE ep, BYTE dir)
+        void USBStallEndpoint(uint8_t ep, uint8_t dir)
         
     Summary:
          Configures the specified endpoint to send STALL to the host, the next
@@ -1235,8 +1059,8 @@ USB_HANDLE USBTransferOnePacket(BYTE ep,BYTE dir,BYTE* data,BYTE len)
         None
         
     Parameters:
-        BYTE ep - The endpoint number that should be configured to send STALL.
-        BYTE dir - The direction of the endpoint to STALL, either 
+        uint8_t ep - The endpoint number that should be configured to send STALL.
+        uint8_t dir - The direction of the endpoint to STALL, either
                    IN_TO_HOST or OUT_FROM_HOST.
         
     Return Values:
@@ -1246,7 +1070,7 @@ USB_HANDLE USBTransferOnePacket(BYTE ep,BYTE dir,BYTE* data,BYTE len)
         None
 
  *******************************************************************/
-void USBStallEndpoint(BYTE ep, BYTE dir)
+void USBStallEndpoint(uint8_t ep, uint8_t dir)
 {
     BDT_ENTRY *p;
 
@@ -1254,31 +1078,34 @@ void USBStallEndpoint(BYTE ep, BYTE dir)
     {
         //For control endpoints (ex: EP0), we need to STALL both IN and OUT
         //endpoints.  EP0 OUT must also be prepared to receive the next SETUP 
-        //packet that will arrrive.
+        //packet that will arrive.
         pBDTEntryEP0OutNext->CNT = USB_EP0_BUFF_SIZE;
         pBDTEntryEP0OutNext->ADR = ConvertToPhysicalAddress(&SetupPkt);
-        pBDTEntryEP0OutNext->STAT.Val = _USIE|_DAT0|(_DTSEN & _DTS_CHECKING_ENABLED)|_BSTALL;
-        pBDTEntryIn[0]->STAT.Val = _USIE|_BSTALL; 
+        pBDTEntryEP0OutNext->STAT.Val = _DAT0|(_DTSEN & _DTS_CHECKING_ENABLED)|_BSTALL;
+        pBDTEntryEP0OutNext->STAT.Val |= _USIE;
+        pBDTEntryIn[0]->STAT.Val = _BSTALL; 
+        pBDTEntryIn[0]->STAT.Val |= _USIE;
                
     }
     else
     {
         p = (BDT_ENTRY*)(&BDT[EP(ep,dir,0)]);
-        p->STAT.Val |= _BSTALL | _USIE;
+        p->STAT.Val |= _BSTALL;
+        p->STAT.Val |= _USIE;
     
         //If the device is in FULL or ALL_BUT_EP0 ping pong modes
         //then stall that entry as well
         #if (USB_PING_PONG_MODE == USB_PING_PONG__FULL_PING_PONG) || (USB_PING_PONG_MODE == USB_PING_PONG__ALL_BUT_EP0)
-    
         p = (BDT_ENTRY*)(&BDT[EP(ep,dir,1)]);
-        p->STAT.Val |= _BSTALL | _USIE;
+        p->STAT.Val |= _BSTALL;
+        p->STAT.Val |= _USIE;
         #endif
     }
 }
 
 /**************************************************************************
     Function:
-        void USBCancelIO(BYTE endpoint)
+        void USBCancelIO(uint8_t endpoint)
     
     Description:
         This function cancels the transfers pending on the specified endpoint.
@@ -1290,7 +1117,7 @@ void USBStallEndpoint(BYTE ep, BYTE dir)
     Precondition:
   
     Parameters:
-        BYTE endpoint - the endpoint number you wish to cancel the transfers for
+        uint8_t endpoint - the endpoint number you wish to cancel the transfers for
      
     Return Values:
         None
@@ -1299,7 +1126,7 @@ void USBStallEndpoint(BYTE ep, BYTE dir)
         None
                                                           
   **************************************************************************/
-void USBCancelIO(BYTE endpoint)
+void USBCancelIO(uint8_t endpoint)
 {
     if(USBPacketDisable == 1)
     {
@@ -1313,8 +1140,8 @@ void USBCancelIO(BYTE endpoint)
         //Point to the next buffer for ping pong purposes.  UOWN getting cleared
         //(either due to SIE clearing it after a transaction, or the firmware
         //clearing it) makes hardware ping pong pointer advance.
-        USBAdvancePingPongBuffer(&pBDTEntryIn[endpoint]);       
-    
+        pBDTEntryIn[endpoint] = (BDT_ENTRY*)(((uintptr_t)pBDTEntryIn[endpoint]) ^ USB_NEXT_PING_PONG);
+        
     	pBDTEntryIn[endpoint]->STAT.Val &= _DTSMASK;
     	pBDTEntryIn[endpoint]->STAT.Val ^= _DTSMASK;
         #endif
@@ -1355,7 +1182,7 @@ void USBCancelIO(BYTE endpoint)
     Remarks:
         If the application firmware calls USBDeviceDetach(), it is strongly
         recommended that the firmware wait at least >= 80ms before calling
-        USBDeviceAttach().  If the firmeware performs a soft detach, and then
+        USBDeviceAttach().  If the firmware performs a soft detach, and then
         re-attaches too soon (ex: after a few micro seconds for instance), some
         hosts may interpret this as an unexpected "glitch" rather than as a
         physical removal/re-attachment of the USB device.  In this case the host
@@ -1364,10 +1191,10 @@ void USBCancelIO(BYTE endpoint)
         detach/re-attach, it is recommended to make sure the device remains 
         detached long enough to mimic a real human controlled USB 
         unplug/re-attach event (ex: after calling USBDeviceDetach(), do not
-        call USBDeviceAttach() for at least 80+ms, preferrably longer.
+        call USBDeviceAttach() for at least 80+ms, preferably longer.
         
         Neither the USBDeviceDetach() or USBDeviceAttach() functions are blocking
-        or take long to execute.  It is the application firmware's 
+        or take long to execute.  It is the application firmwares 
         responsibility for adding the 80+ms delay, when using these API 
         functions.
         
@@ -1436,7 +1263,7 @@ void USBDeviceDetach(void)
          USBDeviceState = DETACHED_STATE;
 
          #ifdef  USB_SUPPORT_OTG    
-             //Disable D+ Pullup
+             //Disable D+ Pull-up
              U1OTGCONbits.DPPULUP = 0;
 
              //Disable HNP
@@ -1490,7 +1317,7 @@ void USBDeviceDetach(void)
     
     Summary:
         Checks if VBUS is present, and that the USB module is not already 
-        initalized, and if so, enables the USB module so as to signal device 
+        initialized, and if so, enables the USB module so as to signal device 
         attachment to the USB host.   
 
     Description:
@@ -1509,7 +1336,7 @@ void USBDeviceDetach(void)
         for a long time (ex: 100ms+) before calling this function to re-enable the module.
         If the device turns off the D+ (for full speed) or D- (for low speed) ~1.5k ohm
         pull up resistor, and then turns it back on very quickly, common hosts will sometimes 
-        reject this event, since no human could ever unplug and reattach a USB device in a 
+        reject this event, since no human could ever unplug and re-attach a USB device in a 
         microseconds (or nanoseconds) timescale.  The host could simply treat this as some kind 
         of glitch and ignore the event altogether.  
     Parameters:
@@ -1558,24 +1385,24 @@ void USBDeviceAttach(void)
 
 /*******************************************************************************
   Function: void USBCtrlEPAllowStatusStage(void);
-    
-  Summary: This function prepares the proper endpoint 0 IN or endpoint 0 OUT 
+
+  Summary: This function prepares the proper endpoint 0 IN or endpoint 0 OUT
             (based on the controlTransferState) to allow the status stage packet
-            of a control transfer to complete.  This function gets used 
+            of a control transfer to complete.  This function gets used
             internally by the USB stack itself, but it may also be called from
             the application firmware, IF the application firmware called
             the USBDeferStatusStage() function during the initial processing
             of the control transfer request.  In this case, the application
             must call the USBCtrlEPAllowStatusStage() once, after it has fully
             completed processing and handling the data stage portion of the
-            request.  
-            
-            If the application firmware has no need for delaying control 
+            request.
+
+            If the application firmware has no need for delaying control
             transfers, and therefore never calls USBDeferStatusStage(), then the
             application firmware should not call USBCtrlEPAllowStatusStage().
-            
+
   Description:
-    
+
   Conditions:
     None
 
@@ -1584,7 +1411,7 @@ void USBDeviceAttach(void)
   Return:
 
   Remarks:
-    None                                                                                                          
+    None
   *****************************************************************************/
 void USBCtrlEPAllowStatusStage(void)
 {
@@ -1593,37 +1420,39 @@ void USBCtrlEPAllowStatusStage(void)
     //USBCtrlEPAllowStatusStage() can be called twice simultaneously (ex: once 
     //in main loop context, while simultaneously getting an interrupt which 
     //tries to call USBCtrlEPAllowStatusStage() again, at the same time).
-    if(USBStatusStageEnabledFlag1 == FALSE)
+    if(USBStatusStageEnabledFlag1 == false)
     {
-        USBStatusStageEnabledFlag1 = TRUE;  
-        if(USBStatusStageEnabledFlag2 == FALSE)
+        USBStatusStageEnabledFlag1 = true;
+        if(USBStatusStageEnabledFlag2 == false)
         {
-            USBStatusStageEnabledFlag2 = TRUE;
+            USBStatusStageEnabledFlag2 = true;
         
             //Determine which endpoints (EP0 IN or OUT needs arming for the status
             //stage), based on the type of control transfer currently pending.
             if(controlTransferState == CTRL_TRF_RX)
             {
                 pBDTEntryIn[0]->CNT = 0;
-                pBDTEntryIn[0]->STAT.Val = _USIE|_DAT1|(_DTSEN & _DTS_CHECKING_ENABLED);        
+                pBDTEntryIn[0]->STAT.Val = _DAT1|(_DTSEN & _DTS_CHECKING_ENABLED);        
+                pBDTEntryIn[0]->STAT.Val |= _USIE;
             }
             else if(controlTransferState == CTRL_TRF_TX)
             {
-        		BothEP0OutUOWNsSet = FALSE;	//Indicator flag used in USBCtrlTrfOutHandler()
-        
+                BothEP0OutUOWNsSet = false;	//Indicator flag used in USBCtrlTrfOutHandler()
+
                 //This buffer (when ping pong buffering is enabled on EP0 OUT) receives the
                 //next SETUP packet.
-        		#if((USB_PING_PONG_MODE == USB_PING_PONG__EP0_OUT_ONLY) || (USB_PING_PONG_MODE == USB_PING_PONG__FULL_PING_PONG))
-        		pBDTEntryEP0OutCurrent->CNT = USB_EP0_BUFF_SIZE;
-        		pBDTEntryEP0OutCurrent->ADR = ConvertToPhysicalAddress(&SetupPkt);
-        		pBDTEntryEP0OutCurrent->STAT.Val = _USIE|_BSTALL; //Prepare endpoint to accept a SETUP transaction
-        		BothEP0OutUOWNsSet = TRUE;	//Indicator flag used in USBCtrlTrfOutHandler()
-        		#endif
-        
+                #if((USB_PING_PONG_MODE == USB_PING_PONG__EP0_OUT_ONLY) || (USB_PING_PONG_MODE == USB_PING_PONG__FULL_PING_PONG))
+                    pBDTEntryEP0OutCurrent->CNT = USB_EP0_BUFF_SIZE;
+                    pBDTEntryEP0OutCurrent->ADR = ConvertToPhysicalAddress(&SetupPkt);
+                    pBDTEntryEP0OutCurrent->STAT.Val = _BSTALL; //Prepare endpoint to accept a SETUP transaction
+                    pBDTEntryEP0OutCurrent->STAT.Val |= _USIE;
+                    BothEP0OutUOWNsSet = true;	//Indicator flag used in USBCtrlTrfOutHandler()
+                #endif
+
                 //This EP0 OUT buffer receives the 0-byte OUT status stage packet.
-        		pBDTEntryEP0OutNext->CNT = USB_EP0_BUFF_SIZE;
-        		pBDTEntryEP0OutNext->ADR = ConvertToPhysicalAddress(&SetupPkt);
-        		pBDTEntryEP0OutNext->STAT.Val = _USIE;           // Note: DTSEN is 0
+                pBDTEntryEP0OutNext->CNT = USB_EP0_BUFF_SIZE;
+                pBDTEntryEP0OutNext->ADR = ConvertToPhysicalAddress(&SetupPkt);
+                pBDTEntryEP0OutNext->STAT.Val = _USIE;           // Note: DTSEN is 0
             }
         }    
     }
@@ -1658,15 +1487,16 @@ void USBCtrlEPAllowStatusStage(void)
   *****************************************************************************/
 void USBCtrlEPAllowDataStage(void)
 {
-    USBDeferINDataStagePackets = FALSE;
-    USBDeferOUTDataStagePackets = FALSE;
+    USBDeferINDataStagePackets = false;
+    USBDeferOUTDataStagePackets = false;
 
     if(controlTransferState == CTRL_TRF_RX) //(<setup><out><out>...<out><in>)
     {
         //Prepare EP0 OUT to receive the first OUT data packet in the data stage sequence.
         pBDTEntryEP0OutNext->CNT = USB_EP0_BUFF_SIZE;
         pBDTEntryEP0OutNext->ADR = ConvertToPhysicalAddress(&CtrlTrfData);
-        pBDTEntryEP0OutNext->STAT.Val = _USIE|_DAT1|(_DTSEN & _DTS_CHECKING_ENABLED);
+        pBDTEntryEP0OutNext->STAT.Val = _DAT1|(_DTSEN & _DTS_CHECKING_ENABLED);
+        pBDTEntryEP0OutNext->STAT.Val |= _USIE;
     }   
     else    //else must be controlTransferState == CTRL_TRF_TX (<setup><in><in>...<in><out>)
     {
@@ -1682,7 +1512,8 @@ void USBCtrlEPAllowDataStage(void)
 	    //Cnt should have been initialized by responsible request owner (ex: by
 	    //using the USBEP0SendRAMPtr() or USBEP0SendROMPtr() API function).
 		pBDTEntryIn[0]->ADR = ConvertToPhysicalAddress(&CtrlTrfData);
-		pBDTEntryIn[0]->STAT.Val = _USIE|_DAT1|(_DTSEN & _DTS_CHECKING_ENABLED);
+		pBDTEntryIn[0]->STAT.Val = _DAT1|(_DTSEN & _DTS_CHECKING_ENABLED);
+        pBDTEntryIn[0]->STAT.Val |= _USIE;
     }     
 }    
 
@@ -1692,12 +1523,12 @@ void USBCtrlEPAllowDataStage(void)
 /******************************************************************************/
 
 /********************************************************************
- * Function:        void USBConfigureEndpoint(BYTE EPNum, BYTE direction)
+ * Function:        void USBConfigureEndpoint(uint8_t EPNum, uint8_t direction)
  *
  * PreCondition:    None
  *
- * Input:           BYTE EPNum - the endpoint to be configured
- *                  BYTE direction - the direction to be configured
+ * Input:           uint8_t EPNum - the endpoint to be configured
+ *                  uint8_t direction - the direction to be configured
  *                                   (either OUT_FROM_HOST or IN_TO_HOST)
  *
  * Output:          None
@@ -1709,7 +1540,7 @@ void USBCtrlEPAllowDataStage(void)
  *
  * Note:            None
  *******************************************************************/
-static void USBConfigureEndpoint(BYTE EPNum, BYTE direction)
+static void USBConfigureEndpoint(uint8_t EPNum, uint8_t direction)
 {
     volatile BDT_ENTRY* handle;
 
@@ -1809,15 +1640,15 @@ static void USBCtrlEPServiceComplete(void)
             //   RAM buffer wasn't available yet) by calling USBDeferDataStage().
             //   If it did so, it is then responsible for calling USBCtrlEPAllowDataStage(),
             //   once it is ready to begin receiving the data.
-            if(USBDeferOUTDataStagePackets == FALSE)
+            if(USBDeferOUTDataStagePackets == false)
             {
                 USBCtrlEPAllowDataStage();
             }
             
             //2.  IN endpoint 0 status stage will be armed by USBCtrlEPAllowStatusStage() 
             //after all of the OUT data has been received and consumed, or if a timeout occurs.
-            USBStatusStageEnabledFlag2 = FALSE;
-            USBStatusStageEnabledFlag1 = FALSE;
+            USBStatusStageEnabledFlag2 = false;
+            USBStatusStageEnabledFlag1 = false;
         }
         else
         {
@@ -1827,8 +1658,10 @@ static void USBCtrlEPServiceComplete(void)
              */
             pBDTEntryEP0OutNext->CNT = USB_EP0_BUFF_SIZE;
             pBDTEntryEP0OutNext->ADR = ConvertToPhysicalAddress(&SetupPkt);
-            pBDTEntryEP0OutNext->STAT.Val = _USIE|_DAT0|(_DTSEN & _DTS_CHECKING_ENABLED)|_BSTALL;
-            pBDTEntryIn[0]->STAT.Val = _USIE|_BSTALL; 
+            pBDTEntryEP0OutNext->STAT.Val = _DAT0|(_DTSEN & _DTS_CHECKING_ENABLED)|_BSTALL;
+            pBDTEntryEP0OutNext->STAT.Val |= _USIE;
+            pBDTEntryIn[0]->STAT.Val = _BSTALL;
+            pBDTEntryIn[0]->STAT.Val |= _USIE;
         }
     }
     else    // A module has claimed ownership of the control transfer session.
@@ -1842,20 +1675,20 @@ static void USBCtrlEPServiceComplete(void)
 			 *
 			 * 1. Prepare IN EP to transfer data to the host.  If however the data
 			 *    wasn't ready yet (ex: because the firmware needs to go and read it from
-			 *    some slow/currently unavailable resource, such as an external I2C EEPROM),
-			 *    Then the class request handler reponsible should call the USBDeferDataStage()
+			 *    some slow/currently unavailable resource, such as an external I2C EEPconst),
+			 *    Then the class request handler responsible should call the USBDeferDataStage()
 			 *    macro.  In this case, the firmware may wait up to 500ms, before it is required
 			 *    to transmit the first IN data packet.  Once the data is ready, and the firmware
 			 *    is ready to begin sending the data, it should then call the 
 			 *    USBCtrlEPAllowDataStage() function to start the data stage.
 			 */
-			if(USBDeferINDataStagePackets == FALSE)
+			if(USBDeferINDataStagePackets == false)
             {
                 USBCtrlEPAllowDataStage();
 			}
 
             // 2. (Optionally) allow the status stage now, to prepare for early termination.
-            //    Note: If a class request handler decided to set USBDeferStatusStagePacket == TRUE,
+            //    Note: If a class request handler decided to set USBDeferStatusStagePacket == true,
             //    then it is responsible for eventually calling USBCtrlEPAllowStatusStage() once it
             //    is ready.  If the class request handler does this, it needs to be careful to
             //    be written so that it can handle the early termination scenario.
@@ -1870,13 +1703,13 @@ static void USBCtrlEPServiceComplete(void)
             //        option can take care of this for you.
             //    Note: For this type of control transfer, there is normally no harm in simply arming the
             //    status stage packet right now, even if the IN data is not ready yet.  This allows for
-            //    immediate early termination, without adding unecessary delay.  Therefore, it is generally not
+            //    immediate early termination, without adding unnecessary delay.  Therefore, it is generally not
             //    recommended for the USB class handler firmware to call USBDeferStatusStage(), for this 
             //    type of control transfer.  If the USB class handler firmware needs more time to fetch the IN
             //    data that needs to be sent to the host, it should instead use the USBDeferDataStage() function.
-            USBStatusStageEnabledFlag2 = FALSE;
-            USBStatusStageEnabledFlag1 = FALSE;
-            if(USBDeferStatusStagePacket == FALSE)
+            USBStatusStageEnabledFlag2 = false;
+            USBStatusStageEnabledFlag1 = false;
+            if(USBDeferStatusStagePacket == false)
             {
                 USBCtrlEPAllowStatusStage();
             } 
@@ -1898,12 +1731,13 @@ static void USBCtrlEPServiceComplete(void)
 			//1. Prepare OUT EP to receive the next SETUP packet.
 			pBDTEntryEP0OutNext->CNT = USB_EP0_BUFF_SIZE;
 			pBDTEntryEP0OutNext->ADR = ConvertToPhysicalAddress(&SetupPkt);
-			pBDTEntryEP0OutNext->STAT.Val = _USIE|_BSTALL;
+			pBDTEntryEP0OutNext->STAT.Val = _BSTALL;
+            pBDTEntryEP0OutNext->STAT.Val |= _USIE;
 				
 			//2. Prepare for IN status stage of the control transfer
-            USBStatusStageEnabledFlag2 = FALSE;
-            USBStatusStageEnabledFlag1 = FALSE;
-			if(USBDeferStatusStagePacket == FALSE)
+            USBStatusStageEnabledFlag2 = false;
+            USBStatusStageEnabledFlag1 = false;
+			if(USBDeferStatusStagePacket == false)
             {
                 USBCtrlEPAllowStatusStage();
             } 
@@ -1936,12 +1770,12 @@ static void USBCtrlEPServiceComplete(void)
  *****************************************************************************/
 static void USBCtrlTrfTxService(void)
 {
-    BYTE byteToSend;
+    uint8_t byteToSend;
 
     //Figure out how many bytes of data to send in the next IN transaction.
     //Assume a full size packet, unless otherwise determined below.
     byteToSend = USB_EP0_BUFF_SIZE;         
-    if(inPipes[0].wCount.Val < (BYTE)USB_EP0_BUFF_SIZE)
+    if(inPipes[0].wCount.Val < (uint8_t)USB_EP0_BUFF_SIZE)
     {
         byteToSend = inPipes[0].wCount.Val;
 
@@ -1962,7 +1796,7 @@ static void USBCtrlTrfTxService(void)
 
     //Keep track of how many bytes remain to be sent in the transfer, by
     //subtracting the number of bytes about to be sent from the total.
-    inPipes[0].wCount.Val = inPipes[0].wCount.Val - byteToSend;
+    inPipes[0].wCount.Val -= byteToSend;
     
     //Next, load the number of bytes to send to BC7..0 in buffer descriptor.
     //Note: Control endpoints may never have a max packet size of > 64 bytes.
@@ -1971,7 +1805,7 @@ static void USBCtrlTrfTxService(void)
 
     //Now copy the data from the source location, to the CtrlTrfData[] buffer,
     //which we will send to the host.
-    pDst = (USB_VOLATILE BYTE*)CtrlTrfData;                // Set destination pointer
+    pDst = (USB_VOLATILE uint8_t*)CtrlTrfData;                // Set destination pointer
     if(inPipes[0].info.bits.ctrl_trf_mem == USB_EP0_ROM)   // Determine type of memory source
     {
         while(byteToSend)
@@ -1987,7 +1821,7 @@ static void USBCtrlTrfTxService(void)
             *pDst++ = *inPipes[0].pSrc.bRam++;
             byteToSend--;
         }//end while(byte_to_send.Val)
-    }//end if(usb_stat.ctrl_trf_mem == _ROM)
+    }//end if(usb_stat.ctrl_trf_mem == _const)
 }//end USBCtrlTrfTxService
 
 /******************************************************************************
@@ -2017,8 +1851,8 @@ static void USBCtrlTrfTxService(void)
  *****************************************************************************/
 static void USBCtrlTrfRxService(void)
 {
-    BYTE byteToRead;
-    BYTE i;
+    uint8_t byteToRead;
+    uint8_t i;
 
     //Load byteToRead with the number of bytes the host just sent us in the 
     //last OUT transaction.
@@ -2033,7 +1867,7 @@ static void USBCtrlTrfRxService(void)
         byteToRead = outPipes[0].wCount.Val;
     }	
     //Reduce the number of remaining bytes by the number we just received.
-	outPipes[0].wCount.Val = outPipes[0].wCount.Val - byteToRead;   
+    outPipes[0].wCount.Val -= byteToRead;
 
     //Copy the OUT DATAx packet bytes that we just received from the host,
     //into the user application buffer space.
@@ -2050,11 +1884,13 @@ static void USBCtrlTrfRxService(void)
         pBDTEntryEP0OutNext->ADR = ConvertToPhysicalAddress(&CtrlTrfData);
         if(pBDTEntryEP0OutCurrent->STAT.DTS == 0)
         {
-            pBDTEntryEP0OutNext->STAT.Val = _USIE|_DAT1|(_DTSEN & _DTS_CHECKING_ENABLED);
+            pBDTEntryEP0OutNext->STAT.Val = _DAT1|(_DTSEN & _DTS_CHECKING_ENABLED);
+            pBDTEntryEP0OutNext->STAT.Val |= _USIE;
         }
         else
         {
-            pBDTEntryEP0OutNext->STAT.Val = _USIE|_DAT0|(_DTSEN & _DTS_CHECKING_ENABLED);
+            pBDTEntryEP0OutNext->STAT.Val = _DAT0|(_DTSEN & _DTS_CHECKING_ENABLED);
+            pBDTEntryEP0OutNext->STAT.Val |= _USIE;
         }
     }
     else
@@ -2067,7 +1903,8 @@ static void USBCtrlTrfRxService(void)
         //Configure EP0 OUT to receive the next SETUP transaction for any future
         //control transfers.  However, set BSTALL in case the host tries to send
         //more data than it claims it was going to send.
-        pBDTEntryEP0OutNext->STAT.Val = _USIE|_BSTALL;
+        pBDTEntryEP0OutNext->STAT.Val = _BSTALL;
+        pBDTEntryEP0OutNext->STAT.Val |= _USIE;
 
 		//All data bytes for the host to device control write (OUT) have now been
 		//received successfully.
@@ -2093,7 +1930,7 @@ static void USBCtrlTrfRxService(void)
         //firmware has completed processing the request.  If it is still busy
         //and needs more time to finish handling the request, then the user
         //callback (the one called by the outPipes[0].pFunc();) should set the
-        //USBDeferStatusStagePacket to TRUE (by calling USBDeferStatusStage()).  In 
+        //USBDeferStatusStagePacket to true (by calling USBDeferStatusStage()).  In
         //this case, it is the application's firmware responsibility to call 
         //the USBCtrlEPAllowStatusStage() function, once it is fully done handling the request.
         //Note: The application firmware must process the request and call
@@ -2101,7 +1938,7 @@ static void USBCtrlTrfRxService(void)
         //means either 50ms, 500ms, or 5 seconds, depending on the type of
         //control transfer.  See the USB 2.0 specification section 9.2.6 for
         //more details.
-        if(USBDeferStatusStagePacket == FALSE)
+        if(USBDeferStatusStagePacket == false)
         {
             USBCtrlEPAllowStatusStage();
         }            
@@ -2130,7 +1967,7 @@ static void USBCtrlTrfRxService(void)
  *******************************************************************/
 static void USBStdSetCfgHandler(void)
 {
-    BYTE i;
+    uint8_t i;
 
     // This will generate a zero length packet
     inPipes[0].info.bits.busy = 1;            
@@ -2147,7 +1984,7 @@ static void USBStdSetCfgHandler(void)
 	//Re-Initialize all ping pong software state bits to 0 (which corresponds to
 	//the EVEN buffer being the next one that will be used), since we are also 
 	//doing a hardware ping pong pointer reset above.
-	for(i = 0; i < (BYTE)(USB_MAX_EP_NUMBER+1u); i++)
+	for(i = 0; i < (uint8_t)(USB_MAX_EP_NUMBER+1u); i++)
 	{
 		ep_data_in[i].Val = 0u;
         ep_data_out[i].Val = 0u;
@@ -2213,28 +2050,38 @@ static void USBStdGetDscHandler(void)
         {
             case USB_DESCRIPTOR_DEVICE:
                 #if !defined(USB_USER_DEVICE_DESCRIPTOR)
-                    inPipes[0].pSrc.bRom = (ROM BYTE*)&device_dsc;
+                    inPipes[0].pSrc.bRom = (const uint8_t*)&device_dsc;
                 #else
-                    inPipes[0].pSrc.bRom = (ROM BYTE*)USB_USER_DEVICE_DESCRIPTOR;
+                    inPipes[0].pSrc.bRom = (const uint8_t*)USB_USER_DEVICE_DESCRIPTOR;
                 #endif
                 inPipes[0].wCount.Val = sizeof(device_dsc);
                 break;
             case USB_DESCRIPTOR_CONFIGURATION:
-                #if !defined(USB_USER_CONFIG_DESCRIPTOR)
-                    inPipes[0].pSrc.bRom = *(USB_CD_Ptr+SetupPkt.bDscIndex);
-                #else
-                    inPipes[0].pSrc.bRom = *(USB_USER_CONFIG_DESCRIPTOR+SetupPkt.bDscIndex);
-                #endif
+                //First perform error case check, to make sure the host is requesting a 
+                //legal descriptor index.  If the request index is illegal, don't do 
+                //anything (so that the default STALL response will be sent).
+                if(SetupPkt.bDscIndex < USB_MAX_NUM_CONFIG_DSC)
+                {
+                    #if !defined(USB_USER_CONFIG_DESCRIPTOR)
+                        inPipes[0].pSrc.bRom = *(USB_CD_Ptr+SetupPkt.bDscIndex);
+                    #else
+                        inPipes[0].pSrc.bRom = *(USB_USER_CONFIG_DESCRIPTOR+SetupPkt.bDscIndex);
+                    #endif
 
-                //This must be loaded using byte addressing.  The source pointer
-                //  may not be word aligned for the 16 or 32 bit machines resulting
-                //  in an address error on the dereference.
-                inPipes[0].wCount.byte.LB = *(inPipes[0].pSrc.bRom+2);
-                inPipes[0].wCount.byte.HB = *(inPipes[0].pSrc.bRom+3);
+                    //This must be loaded using byte addressing.  The source pointer
+                    //  may not be word aligned for the 16 or 32 bit machines resulting
+                    //  in an address error on the dereference.
+                    inPipes[0].wCount.byte.LB = *(inPipes[0].pSrc.bRom+2);
+                    inPipes[0].wCount.byte.HB = *(inPipes[0].pSrc.bRom+3);
+                }
+				else
+				{
+					inPipes[0].info.Val = 0;
+				}
                 break;
             case USB_DESCRIPTOR_STRING:
                 //USB_NUM_STRING_DESCRIPTORS was introduced as optional in release v2.3.  In v2.4 and
-                //  later it is now manditory.  This should be defined in usb_config.h and should
+                //  later it is now mandatory.  This should be defined in usb_config.h and should
                 //  indicate the number of string descriptors.
                 if(SetupPkt.bDscIndex<USB_NUM_STRING_DESCRIPTORS)
                 {
@@ -2247,7 +2094,7 @@ static void USBStdGetDscHandler(void)
                 else if(SetupPkt.bDscIndex == MICROSOFT_OS_DESCRIPTOR_INDEX)
                 {
                     //Get a pointer to the special MS OS string descriptor requested
-                    inPipes[0].pSrc.bRom = (ROM BYTE*)&MSOSDescriptor;
+                    inPipes[0].pSrc.bRom = (const uint8_t*)&MSOSDescriptor;
                     // Set data count
                     inPipes[0].wCount.Val = *inPipes[0].pSrc.bRom;                    
                 }    
@@ -2297,7 +2144,7 @@ static void USBStdGetStatusHandler(void)
                 CtrlTrfData[0]|=0x01;
             }
 
-            if(RemoteWakeup == TRUE)
+            if(RemoteWakeup == true)
             {
                 CtrlTrfData[0]|=0x02;
             }
@@ -2330,9 +2177,9 @@ static void USBStdGetStatusHandler(void)
 
     if(inPipes[0].info.bits.busy == 1)
     {
-        inPipes[0].pSrc.bRam = (BYTE*)&CtrlTrfData;            // Set Source
-        inPipes[0].info.bits.ctrl_trf_mem = USB_EP0_RAM;               // Set memory type
-        inPipes[0].wCount.v[0] = 2;                         // Set data count
+        inPipes[0].pSrc.bRam = (uint8_t*)&CtrlTrfData;        // Set Source
+        inPipes[0].info.bits.ctrl_trf_mem = USB_EP0_RAM;      // Set memory type
+        inPipes[0].wCount.v[0] = 2;                           // Set data count
     }//end if(...)
 }//end USBStdGetStatusHandler
 
@@ -2348,7 +2195,7 @@ static void USBStdGetStatusHandler(void)
  * Side Effects:    
  *
  * Overview:        This function handles the event of a STALL 
- *                  occuring on the bus
+ *                  occurring on the bus
  *
  * Note:            None
  *******************************************************************/
@@ -2364,14 +2211,14 @@ static void USBStallHandler(void)
      * for EP0_IN will then be forced back to CPU by firmware.
      */
 
-    /* v2b fix */
     if(U1EP0bits.EPSTALL == 1)
     {
         // UOWN - if 0, owned by CPU, if 1, owned by SIE
         if((pBDTEntryEP0OutCurrent->STAT.Val == _USIE) && (pBDTEntryIn[0]->STAT.Val == (_USIE|_BSTALL)))
         {
             // Set ep0Bo to stall also
-            pBDTEntryEP0OutCurrent->STAT.Val = _USIE|_DAT0|(_DTSEN & _DTS_CHECKING_ENABLED)|_BSTALL;
+            pBDTEntryEP0OutCurrent->STAT.Val = _DAT0|(_DTSEN & _DTS_CHECKING_ENABLED)|_BSTALL;
+            pBDTEntryEP0OutCurrent->STAT.Val |= _USIE;
         }//end if
         U1EP0bits.EPSTALL = 0;               // Clear stall status
     }//end if
@@ -2423,11 +2270,12 @@ static void USBSuspend(void)
     USBActivityIE = 1;                     // Enable bus activity interrupt
     USBClearInterruptFlag(USBIdleIFReg,USBIdleIFBitNum);
 
-    #if defined(__18CXX) || defined(_PIC14E)
+    #if defined(__18CXX) || defined(_PIC14E) || defined(__XC8)
         U1CONbits.SUSPND = 1;                   // Put USB module in power conserve
                                                 // mode, SIE clock inactive
     #endif
-    USBBusIsSuspended = TRUE;
+    USBBusIsSuspended = true;
+    USBTicksSinceSuspendEnd = 0;
  
     /*
      * At this point the PIC can go into sleep,idle, or
@@ -2454,7 +2302,7 @@ static void USBSuspend(void)
  *******************************************************************/
 static void USBWakeFromSuspend(void)
 {
-    USBBusIsSuspended = FALSE;
+    USBBusIsSuspended = false;
 
     /*
      * If using clock switching, the place to restore the original
@@ -2462,9 +2310,9 @@ static void USBWakeFromSuspend(void)
      */
     USB_WAKEUP_FROM_SUSPEND_HANDLER(EVENT_RESUME,0,0);
 
-    #if defined(__18CXX) || defined(_PIC14E)
+    #if defined(__18CXX) || defined(_PIC14E) || defined(__XC8)
         //To avoid improperly clocking the USB module, make sure the oscillator
-        //settings are consistant with USB operation before clearing the SUSPND bit.
+        //settings are consistent with USB operation before clearing the SUSPND bit.
         //Make sure the correct oscillator settings are selected in the 
         //"USB_WAKEUP_FROM_SUSPEND_HANDLER(EVENT_RESUME,0,0)" handler.
         U1CONbits.SUSPND = 0;   // Bring USB module out of power conserve
@@ -2482,19 +2330,21 @@ static void USBWakeFromSuspend(void)
     are required to synchronize the internal hardware state machine before
     the ACTIVIF bit can be cleared by firmware. Clearing the ACTVIF bit
     before the internal hardware is synchronized may not have an effect on
-    the value of ACTVIF. Additonally, if the USB module uses the clock from
+    the value of ACTVIF. Additionally, if the USB module uses the clock from
     the 96 MHz PLL source, then after clearing the SUSPND bit, the USB
     module may not be immediately operational while waiting for the 96 MHz
     PLL to lock.
     ********************************************************************/
 
     // UIRbits.ACTVIF = 0;                      // Removed
-    #if defined(__18CXX)
+    #if defined(__18CXX) || defined(__XC8)
     while(USBActivityIF)
     #endif
     {
         USBClearInterruptFlag(USBActivityIFReg,USBActivityIFBitNum);
     }  // Added
+
+    USBTicksSinceSuspendEnd = 0;
 
 }//end USBWakeFromSuspend
 
@@ -2532,7 +2382,7 @@ static void USBCtrlEPService(void)
     if((USTATcopy.Val & USTAT_EP0_PP_MASK) == USTAT_EP0_OUT_EVEN)
     {
 		//Point to the EP0 OUT buffer of the buffer that arrived
-        #if defined (_PIC14E) || defined(__18CXX)
+        #if defined (_PIC14E) || defined(__18CXX) || defined(__XC8)
             pBDTEntryEP0OutCurrent = (volatile BDT_ENTRY*)&BDT[(USTATcopy.Val & USTAT_EP_MASK)>>1];
         #elif defined(__C30__) || defined(__C32__) || defined __XC16__
             pBDTEntryEP0OutCurrent = (volatile BDT_ENTRY*)&BDT[(USTATcopy.Val & USTAT_EP_MASK)>>2];
@@ -2543,23 +2393,16 @@ static void USBCtrlEPService(void)
 		//Set the next out to the current out packet
         pBDTEntryEP0OutNext = pBDTEntryEP0OutCurrent;
 		//Toggle it to the next ping pong buffer (if applicable)
-        ((BYTE_VAL*)&pBDTEntryEP0OutNext)->Val ^= USB_NEXT_EP0_OUT_PING_PONG;
+        pBDTEntryEP0OutNext = (volatile BDT_ENTRY*)(((uintptr_t)pBDTEntryEP0OutNext) ^ USB_NEXT_EP0_OUT_PING_PONG);
 
 		//If the current EP0 OUT buffer has a SETUP packet
         if(pBDTEntryEP0OutCurrent->STAT.PID == PID_SETUP)
         {
-            unsigned char setup_cnt;
-
 	        //The SETUP transaction data may have gone into the the CtrlTrfData 
 	        //buffer, or elsewhere, depending upon how the BDT was prepared
 	        //before the transaction.  Therefore, we should copy the data to the 
 	        //SetupPkt buffer so it can be processed correctly by USBCtrlTrfSetupHandler().		    
-            for(setup_cnt = 0; setup_cnt < 8u; setup_cnt++) //SETUP data packets always contain exactly 8 bytes.
-            {
-                *(BYTE*)((BYTE*)&SetupPkt + setup_cnt) = *(BYTE*)ConvertToVirtualAddress(pBDTEntryEP0OutCurrent->ADR);
-                pBDTEntryEP0OutCurrent->ADR++;
-            }    
-            pBDTEntryEP0OutCurrent->ADR = ConvertToPhysicalAddress(&SetupPkt);
+            memcpy((uint8_t*)&SetupPkt, (uint8_t*)ConvertToVirtualAddress(pBDTEntryEP0OutCurrent->ADR), 8);
 
 			//Handle the control transfer (parse the 8-byte SETUP command and figure out what to do)
             USBCtrlTrfSetupHandler();
@@ -2616,7 +2459,7 @@ static void USBCtrlEPService(void)
  *                  it is important to keep track of data source, data
  *                  destination, and data count. These three parameters are
  *                  stored in pSrc,pDst, and wCount. A flag is used to
- *                  note if the data source is from ROM or RAM.
+ *                  note if the data source is from const or RAM.
  *
  *******************************************************************/
 static void USBCtrlTrfSetupHandler(void)
@@ -2625,10 +2468,10 @@ static void USBCtrlTrfSetupHandler(void)
     //1. Re-initialize state tracking variables related to control transfers.
     //--------------------------------------------------------------------------
     shortPacketStatus = SHORT_PKT_NOT_USED;  
-    USBDeferStatusStagePacket = FALSE;
-    USBDeferINDataStagePackets = FALSE;
-    USBDeferOUTDataStagePackets = FALSE;
-    BothEP0OutUOWNsSet = FALSE;    
+    USBDeferStatusStagePacket = false;
+    USBDeferINDataStagePackets = false;
+    USBDeferOUTDataStagePackets = false;
+    BothEP0OutUOWNsSet = false;
     controlTransferState = WAIT_SETUP;
 
     //Abandon any previous control transfers that might have been using EP0.
@@ -2638,10 +2481,11 @@ static void USBCtrlTrfSetupHandler(void)
     //one or more UOWN bits might still be set.  If so, we should clear the UOWN bits,
     //so the EP0 IN/OUT endpoints are in a known inactive state, ready for re-arming
     //by the class request handler that will be called next.
-    pBDTEntryIn[0]->STAT.Val &= ~(_USIE);     
-    ((BYTE_VAL*)&pBDTEntryIn[0])->Val ^= USB_NEXT_EP0_IN_PING_PONG;
+    pBDTEntryIn[0]->STAT.Val &= ~(_USIE);  
+    
+    pBDTEntryIn[0] = (volatile BDT_ENTRY*)(((uintptr_t)pBDTEntryIn[0]) ^ USB_NEXT_EP0_IN_PING_PONG);
     pBDTEntryIn[0]->STAT.Val &= ~(_USIE);      
-    ((BYTE_VAL*)&pBDTEntryIn[0])->Val ^= USB_NEXT_EP0_IN_PING_PONG;
+    pBDTEntryIn[0] = (volatile BDT_ENTRY*)(((uintptr_t)pBDTEntryIn[0]) ^ USB_NEXT_EP0_IN_PING_PONG);
     pBDTEntryEP0OutNext->STAT.Val &= ~(_USIE);         
 
     inPipes[0].info.Val = 0;
@@ -2703,21 +2547,22 @@ static void USBCtrlTrfOutHandler(void)
         //control transfer.  Go back to the idle "WAIT_SETUP" state.
         controlTransferState = WAIT_SETUP;
 
-	    //Prepare EP0 OUT for the next SETUP transaction, however, it may have
-	    //already been prepared if ping-pong buffering was enabled on EP0 OUT,
-	    //and the last control transfer was of direction: device to host, see
-	    //USBCtrlEPServiceComplete().  If it was already prepared, do not want
-	    //to do anything to the BDT.
-		if(BothEP0OutUOWNsSet == FALSE)
-		{
-	        pBDTEntryEP0OutNext->CNT = USB_EP0_BUFF_SIZE;
-	        pBDTEntryEP0OutNext->ADR = ConvertToPhysicalAddress(&SetupPkt);
-	        pBDTEntryEP0OutNext->STAT.Val = _USIE|_DAT0|(_DTSEN & _DTS_CHECKING_ENABLED)|_BSTALL;			
-		}
-		else
-		{
-			BothEP0OutUOWNsSet = FALSE;
-		}
+        //Prepare EP0 OUT for the next SETUP transaction, however, it may have
+        //already been prepared if ping-pong buffering was enabled on EP0 OUT,
+        //and the last control transfer was of direction: device to host, see
+        //USBCtrlEPServiceComplete().  If it was already prepared, do not want
+        //to do anything to the BDT.
+        if(BothEP0OutUOWNsSet == false)
+        {
+            pBDTEntryEP0OutNext->CNT = USB_EP0_BUFF_SIZE;
+            pBDTEntryEP0OutNext->ADR = ConvertToPhysicalAddress(&SetupPkt);
+            pBDTEntryEP0OutNext->STAT.Val = _DAT0|(_DTSEN & _DTS_CHECKING_ENABLED)|_BSTALL;
+            pBDTEntryEP0OutNext->STAT.Val |= _USIE;
+        }
+        else
+        {
+                BothEP0OutUOWNsSet = false;
+        }
     }
 }
 
@@ -2735,7 +2580,7 @@ static void USBCtrlTrfOutHandler(void)
  * Overview:        This routine handles an IN transaction according to
  *                  which control transfer state is currently active.
  *
- * Note:            A Set Address Request must not change the acutal address
+ * Note:            A Set Address Request must not change the actual address
  *                  of the device until the completion of the control
  *                  transfer. The end of the control transfer for Set Address
  *                  Request is an IN transaction. Therefore it is necessary
@@ -2746,19 +2591,19 @@ static void USBCtrlTrfOutHandler(void)
  *****************************************************************************/
 static void USBCtrlTrfInHandler(void)
 {
-    BYTE lastDTS;
+    uint8_t lastDTS;
 
     lastDTS = pBDTEntryIn[0]->STAT.DTS;
 
     //switch to the next ping pong buffer
-    ((BYTE_VAL*)&pBDTEntryIn[0])->Val ^= USB_NEXT_EP0_IN_PING_PONG;
+    pBDTEntryIn[0] = (volatile BDT_ENTRY*)(((uintptr_t)pBDTEntryIn[0]) ^ USB_NEXT_EP0_IN_PING_PONG);
 
     //Must check if in ADR_PENDING_STATE.  If so, we need to update the address
     //now, since the IN status stage of the (set address) control transfer has 
     //evidently completed successfully.
     if(USBDeviceState == ADR_PENDING_STATE)
     {
-        U1ADDR = SetupPkt.bDevADR.Val;
+        U1ADDR = (SetupPkt.bDevADR & 0x7F);
         if(U1ADDR != 0u)
         {
             USBDeviceState=ADDRESS_STATE;
@@ -2783,17 +2628,20 @@ static void USBCtrlTrfInHandler(void)
         {
             // If a short packet has been sent, don't want to send any more,
             // stall next time if host is still trying to read.
-            pBDTEntryIn[0]->STAT.Val = _USIE|_BSTALL;
+            pBDTEntryIn[0]->STAT.Val = _BSTALL;
+            pBDTEntryIn[0]->STAT.Val |= _USIE;
         }
         else
         {
             if(lastDTS == 0)
             {
-                pBDTEntryIn[0]->STAT.Val = _USIE|_DAT1|(_DTSEN & _DTS_CHECKING_ENABLED);
+                pBDTEntryIn[0]->STAT.Val = _DAT1|(_DTSEN & _DTS_CHECKING_ENABLED);
+                pBDTEntryIn[0]->STAT.Val |= _USIE;
             }
             else
             {
-                pBDTEntryIn[0]->STAT.Val = _USIE|_DAT0|(_DTSEN & _DTS_CHECKING_ENABLED);
+                pBDTEntryIn[0]->STAT.Val = _DAT0|(_DTSEN & _DTS_CHECKING_ENABLED);
+                pBDTEntryIn[0]->STAT.Val |= _USIE;
             }
         }//end if(...)else
     }
@@ -2853,7 +2701,7 @@ static void USBCheckStdRequest(void)
             USBStdSetCfgHandler();
             break;
         case USB_REQUEST_GET_CONFIGURATION:
-            inPipes[0].pSrc.bRam = (BYTE*)&USBActiveConfiguration;         // Set Source
+            inPipes[0].pSrc.bRam = (uint8_t*)&USBActiveConfiguration;         // Set Source
             inPipes[0].info.bits.ctrl_trf_mem = USB_EP0_RAM;               // Set memory type
             inPipes[0].wCount.v[0] = 1;                         // Set data count
             inPipes[0].info.bits.busy = 1;
@@ -2866,7 +2714,7 @@ static void USBCheckStdRequest(void)
             USBStdFeatureReqHandler();
             break;
         case USB_REQUEST_GET_INTERFACE:
-            inPipes[0].pSrc.bRam = (BYTE*)&USBAlternateInterface[SetupPkt.bIntfID];  // Set source
+            inPipes[0].pSrc.bRam = (uint8_t*)&USBAlternateInterface[SetupPkt.bIntfID];  // Set source
             inPipes[0].info.bits.ctrl_trf_mem = USB_EP0_RAM;               // Set memory type
             inPipes[0].wCount.v[0] = 1;                         // Set data count
             inPipes[0].info.bits.busy = 1;
@@ -2908,7 +2756,7 @@ static void USBStdFeatureReqHandler(void)
     BDT_ENTRY *p;
     EP_STATUS current_ep_data;
     #if defined(__C32__)
-        DWORD* pUEP;
+        uint32_t* pUEP;
     #else
         unsigned char* pUEP;             
     #endif
@@ -2953,9 +2801,9 @@ static void USBStdFeatureReqHandler(void)
     {
         inPipes[0].info.bits.busy = 1;
         if(SetupPkt.bRequest == USB_REQUEST_SET_FEATURE)
-            RemoteWakeup = TRUE;
+            RemoteWakeup = true;
         else
-            RemoteWakeup = FALSE;
+            RemoteWakeup = false;
     }//end if
 
     //Check if the host sent a valid SET or CLEAR endpoint halt request.
@@ -2986,11 +2834,11 @@ static void USBStdFeatureReqHandler(void)
         #if (USB_PING_PONG_MODE == USB_PING_PONG__ALL_BUT_EP0) || (USB_PING_PONG_MODE == USB_PING_PONG__FULL_PING_PONG)   
             if(current_ep_data.bits.ping_pong_state == 0) //Check if even
             {
-                USBHALPingPongSetToEven(&p);
+                p = (BDT_ENTRY*)(((uintptr_t)p) & (~USB_NEXT_PING_PONG));
             }
             else //else must have been odd
             {
-                USBHALPingPongSetToOdd(&p);
+                p = (BDT_ENTRY*)(((uintptr_t)p) | USB_NEXT_PING_PONG);
             }
         #endif
         
@@ -3023,14 +2871,15 @@ static void USBStdFeatureReqHandler(void)
             }
 
 			//Then STALL the endpoint
-            p->STAT.Val |= _USIE|_BSTALL;
+            p->STAT.Val |= _BSTALL;
+            p->STAT.Val |= _USIE;
         }//if(SetupPkt.bRequest == USB_REQUEST_SET_FEATURE)
         else
         {
 			//Else the request must have been a CLEAR_FEATURE endpoint halt.
             #if (USB_PING_PONG_MODE == USB_PING_PONG__ALL_BUT_EP0) || (USB_PING_PONG_MODE == USB_PING_PONG__FULL_PING_PONG)   
                 //toggle over the to the non-active BDT
-                USBAdvancePingPongBuffer(&p);  
+                p = (BDT_ENTRY*)(((uintptr_t)p) ^ USB_NEXT_PING_PONG);  
 
                 if(p->STAT.UOWN == 1)
                 {
@@ -3048,7 +2897,7 @@ static void USBStdFeatureReqHandler(void)
 
                 //toggle back to the active BDT (the one the SIE is currently looking at
                 //and will use for the next successful transaction to take place on the EP
-                USBAdvancePingPongBuffer(&p);    
+                p = (BDT_ENTRY*)(((uintptr_t)p) ^ USB_NEXT_PING_PONG);
                 
                 //Check if we are currently terminating, or have previously terminated
                 //a transaction on the given endpoint.  If so, need to clear UOWN,
@@ -3118,7 +2967,7 @@ static void USBStdFeatureReqHandler(void)
             
 			//Get a pointer to the appropriate UEPn register
             #if defined(__C32__)
-                pUEP = (DWORD*)(&U1EP0);
+                pUEP = (uint32_t*)(&U1EP0);
                 pUEP += (SetupPkt.EPNum*4);
             #else
                 pUEP = (unsigned char*)(&U1EP0+SetupPkt.EPNum);
@@ -3129,6 +2978,152 @@ static void USBStdFeatureReqHandler(void)
         }//end if(SetupPkt.bRequest == USB_REQUEST_SET_FEATURE)
     }//end if (lots of checks for set/clear endpoint halt)
 }//end USBStdFeatureReqHandler
+
+
+
+
+/**************************************************************************
+    Function:
+        void USBIncrement1msInternalTimers(void)
+
+    Description:
+        This function increments internal 1ms time base counters, which are
+        useful for application code (that can use a 1ms time base/counter), and
+        for certain USB event timing specific purposes.
+
+        In USB full speed applications, the application code does not need to (and should
+        not) explicitly call this function, as the USBDeviceTasks() function will
+        automatically call this function whenever a 1ms time interval has elapsed
+        (assuming the code is calling USBDeviceTasks() frequently enough in USB_POLLING
+        mode, or that USB interrupts aren't being masked for more than 1ms at a time
+        in USB_INTERRUPT mode).
+
+        In USB low speed applications, the application firmware is responsible for
+        periodically calling this function at a ~1ms rate.  This can be done using
+        a general purpose microcontroller timer set to interrupt every 1ms for example.
+        If the low speed application code does not call this function, the internal timers
+        will not increment, and the USBGet1msTickCount() API function will not be available.
+        Additionally, certain USB stack operations (like control transfer timeouts)
+        may be unavailable.
+
+    Precondition:
+        This function should be called only after USBDeviceInit() has been
+        called (at least once at the start of the application).  Ordinarily,
+        application code should never call this function, unless it is a low speed
+        USB device.
+
+    Parameters:
+        None
+
+    Return Values:
+        None
+
+    Remarks:
+        This function does not need to be called during USB suspend conditions, when
+        the USB module/stack is disabled, or when the USB cable is detached from the host.
+  ***************************************************************************/
+void USBIncrement1msInternalTimers(void)
+{
+    #if(USB_SPEED_OPTION == USB_LOW_SPEED)
+        #warning "For low speed USB applications, read the function comments for the USBIncrement1msInternalTimers() function, and implement code to call this function periodically."
+    #endif
+
+    //Increment timekeeping 1ms tick counters.  Useful for other APIs/code
+    //that needs a 1ms time base that is active during USB non-suspended operation.
+    USB1msTickCount++;
+    if(USBIsBusSuspended() == false)
+    {
+        USBTicksSinceSuspendEnd++;
+        //Check for 8-bit wraparound.  If so, force it to saturate at 255.
+        if(USBTicksSinceSuspendEnd == 0)
+        {
+            USBTicksSinceSuspendEnd = 255;
+        }
+    }
+}
+
+
+
+
+/**************************************************************************
+    Function:
+        uint32_t USBGet1msTickCount(void)
+
+    Description:
+        This function retrieves a 32-bit unsigned integer that normally increments by
+        one every one millisecond.  The count value starts from zero when the
+        USBDeviceInit() function is first called.  See the remarks section for
+        details on special circumstances where the tick count will not increment.
+
+    Precondition:
+        This function should be called only after USBDeviceInit() has been
+        called (at least once at the start of the application).
+
+    Parameters:
+        None
+
+    Return Values:
+        uint32_t representing the approximate millisecond count, since the time the
+        USBDeviceInit() function was first called.
+
+    Remarks:
+        On 8-bit USB full speed devices, the internal counter is incremented on
+        every SOF packet detected.  Therefore, it will not increment during suspend
+        or when the USB cable is detached.  However, on 16-bit devices, the T1MSECIF
+        hardware interrupt source is used to increment the internal counter.  Therefore,
+        on 16-bit devices, the count continue to increment during USB suspend or
+        detach events, so long as the application code has not put the microcontroller
+        to sleep during these events, and the application firmware is regularly
+        calling the USBDeviceTasks() function (or allowing it to execute, if using
+        USB_INTERRUPT mode operation).
+
+        In USB low speed applications, the host does not broadcast SOF packets to
+        the device, so the application firmware becomes responsible for calling
+        USBIncrement1msInternalTimers() periodically (ex: from a general purpose
+        timer interrupt handler), or else the returned value from this function will
+        not increment.
+        
+        Prior to calling USBDeviceInit() for the first time the returned value will
+        be unpredictable.
+
+        This function is USB_INTERRUPT mode safe and may be called from main loop
+        code without risk of retrieving a partially updated 32-bit number.
+
+        However, this value only increments when the USBDeviceTasks() function is allowed
+        to execute.  If USB_INTERRUPT mode is used, it is allowable to block on this
+        function.  If however USB_POLLING mode is used, one must not block on this
+        function without also calling USBDeviceTasks() continuously for the blocking
+        duration (since the USB stack must still be allowed to execute, and the USB
+        stack is also responsible for updating the tick counter internally).
+
+        If the application is operating in USB_POLLING mode, this function should
+        only be called from the main loop context, and not from an interrupt handler,
+        as the returned value could be incorrect, if the main loop context code was in
+        the process of updating the internal count at the moment of the interrupt event.
+   ***************************************************************************/
+uint32_t USBGet1msTickCount(void)
+{
+    #if defined (USB_INTERRUPT)
+        uint32_t localContextValue;
+
+        //Repeatedly read the interrupt context variable, until we get a stable/unchanging
+        //value.  This ensures that the complete 32-bit value got read without
+        //getting interrupted in between bytes.
+        do
+        {
+            localContextValue = USB1msTickCount;
+        }while(localContextValue != USB1msTickCount);
+
+        return localContextValue;    
+    
+    #else
+        return USB1msTickCount;
+    #endif
+}
+
+
+
+
 
 
 /** EOF USBDevice.c *****************************************************/

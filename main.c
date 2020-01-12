@@ -52,10 +52,31 @@
 ********************************************************************/
 
 /** INCLUDES *******************************************************/
-#include "./usb.h"
-#include "./usb_function_cdc.h"
-
+#include "./USB/usb.h"
+//#include "./USB/usb_function_cdc.h"
 #include "HardwareProfile.h"
+
+//#include <delays.h> //delay Library
+//#include <timers.h>
+//#include <EEP.H>
+
+
+struct s {
+    unsigned char sl;
+    char ch[5];
+};
+
+#define table_count 18   //bad Dwayne has 2nd copy of this in patterns_4x4x4.c
+extern const unsigned char *patterns[];
+extern const unsigned int pattern_size[];
+extern const unsigned char pattern_demo_loops[];
+extern const struct s chardata[]; 
+extern uint8_t pattern_speed;
+
+// Ensure we have the correct target PIC device family
+#if !defined(__18F4550) && !defined(__18F2550) && !defined(__18F2450) && !defined(__18F25K50)
+	#error "This firmware only supports either the PIC18F4550 or PIC18F2550 microcontrollers."
+#endif
 
 /** CONFIGURATION **************************************************/
         #pragma config PLLSEL   = PLL3X     // 3X PLL multiplier selected
@@ -81,13 +102,14 @@
 
 /** I N C L U D E S **********************************************************/
 
-#include "GenericTypeDefs.h"
-#include "Compiler.h"
-#include "usb_config.h"
-#include "usb_device.h"
-#include "usb.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include "system.h"
+#include "system_config.h"
 
-#include "HardwareProfile.h"
+#include "usb/usb.h"
+#include "usb/usb_device_cdc.h"
+#include "usb/app_device_cdc_basic.h"
 
 /** V A R I A B L E S ********************************************************/
 #if defined(__18CXX)
@@ -100,110 +122,63 @@ char USB_Out_Buffer[64];
 BOOL stringPrinted;
 volatile BOOL buttonPressed;
 volatile BYTE buttonCount;
+uint8_t user_msg_size; //DDF
+uint8_t user_id = 0;
+uint8_t plockout[4];
+
+unsigned char side_left_out=0, side_right_out=0, wait_timer = 1;
+unsigned char strobe = 0;
+unsigned char intensity = 0;
+unsigned char idelay = 0;
+
+USB_HANDLE USBOutHandle = 0;
+USB_HANDLE USBInHandle = 0;
+BOOL blinkStatusValid = FLAG_TRUE;
+
+unsigned int temp=0;
 
 /** P R I V A T E  P R O T O T Y P E S ***************************************/
 static void InitializeSystem(void);
 void ProcessIO(void);
-void USBDeviceTasks(void);
-void YourHighPriorityISRCode();
-void YourLowPriorityISRCode();
-void USBCBSendResume(void);
+//void USBDeviceTasks(void);
+//void YourHighPriorityISRCode();
+//void YourLowPriorityISRCode();
+//void USBCBSendResume(void);
 void UserInit(void);
+void strobe_LED(unsigned char, unsigned char, unsigned char);
+void timer1_isr();
+void update_pattern(void);
+void next_pattern(void);
+void back_pattern(void);
+void handle_push_button(void);
+void add_and_shift(unsigned char, unsigned char);
+unsigned char display_char( unsigned char, unsigned char);
+void clear_display(void);
+unsigned int brand(void);
+unsigned char get_next_pattern_byte(void);
+unsigned char pattern_done(void);     
 
-/** VECTOR REMAPPING ***********************************************/
-#if defined(__18CXX)
-	//On PIC18 devices, addresses 0x00, 0x08, and 0x18 are used for
-	//the reset, high priority interrupt, and low priority interrupt
-	//vectors.  However, the Microchip HID bootloader occupies the
-	//0x00-0xFFF program memory region.  Therefore, the bootloader code remaps 
-	//these vectors to new locations as indicated below.  This remapping is 
-	//only necessary if you wish to be able to (optionally) program the hex file 
-	//generated from this project with the USB bootloader.  
-	#define REMAPPED_RESET_VECTOR_ADDRESS			0x1000
-	#define REMAPPED_HIGH_INTERRUPT_VECTOR_ADDRESS	0x1008
-	#define REMAPPED_LOW_INTERRUPT_VECTOR_ADDRESS	0x1018
-	#define APP_VERSION_ADDRESS                     0x1016 //Fixed location, so the App FW image version can be read by the bootloader.
-	#define APP_SIGNATURE_ADDRESS                   0x1006 //Signature location that must be kept at blaknk value (0xFFFF) in this project (has special purpose for bootloader).
-
-    //--------------------------------------------------------------------------
-    //Application firmware image version values, as reported to the bootloader
-    //firmware.  These are useful so the bootloader can potentially know if the
-    //user is trying to program an older firmware image onto a device that
-    //has already been programmed with a with a newer firmware image.
-    //Format is APP_FIRMWARE_VERSION_MAJOR.APP_FIRMWARE_VERSION_MINOR.
-    //The valid minor version is from 00 to 99.  Example:
-    //if APP_FIRMWARE_VERSION_MAJOR == 1, APP_FIRMWARE_VERSION_MINOR == 1,
-    //then the version is "1.01"
-    #define APP_FIRMWARE_VERSION_MAJOR  1   //valid values 0-255
-    #define APP_FIRMWARE_VERSION_MINOR  0   //valid values 0-99
-    //--------------------------------------------------------------------------
-	
-	#pragma romdata AppVersionAndSignatureSection = APP_VERSION_ADDRESS
-	ROM unsigned char AppVersion[2] = {APP_FIRMWARE_VERSION_MINOR, APP_FIRMWARE_VERSION_MAJOR};
-	#pragma romdata AppSignatureSection = APP_SIGNATURE_ADDRESS
-	ROM unsigned short int SignaturePlaceholder = 0xFFFF;
-	
-	#pragma code HIGH_INTERRUPT_VECTOR = 0x08
-	void High_ISR (void)
-	{
-	     _asm goto REMAPPED_HIGH_INTERRUPT_VECTOR_ADDRESS _endasm
-	}
-	#pragma code LOW_INTERRUPT_VECTOR = 0x18
-	void Low_ISR (void)
-	{
-	     _asm goto REMAPPED_LOW_INTERRUPT_VECTOR_ADDRESS _endasm
-	}
-	extern void _startup (void);        // See c018i.c in your C18 compiler dir
-	#pragma code REMAPPED_RESET_VECTOR = REMAPPED_RESET_VECTOR_ADDRESS
-	void _reset (void)
-	{
-	    _asm goto _startup _endasm
-	}
-	#pragma code REMAPPED_HIGH_INTERRUPT_VECTOR = REMAPPED_HIGH_INTERRUPT_VECTOR_ADDRESS
-	void Remapped_High_ISR (void)
-	{
-	     _asm goto YourHighPriorityISRCode _endasm
-	}
-	#pragma code REMAPPED_LOW_INTERRUPT_VECTOR = REMAPPED_LOW_INTERRUPT_VECTOR_ADDRESS
-	void Remapped_Low_ISR (void)
-	{
-	     _asm goto YourLowPriorityISRCode _endasm
-	}
-	#pragma code
-	
-	
-	//These are your actual interrupt handling routines.
-	#pragma interrupt YourHighPriorityISRCode
-	void YourHighPriorityISRCode()
-	{
-		//Check which interrupt flag caused the interrupt.
-		//Service the interrupt
-		//Clear the interrupt flag
-		//Etc.
-        #if defined(USB_INTERRUPT)
-	        USBDeviceTasks();
-        #endif
-	
-	}	//This return will be a "retfie fast", since this is in a #pragma interrupt section 
-	#pragma interruptlow YourLowPriorityISRCode
-	void YourLowPriorityISRCode()
-	{
-		//Check which interrupt flag caused the interrupt.
-		//Service the interrupt
-		//Clear the interrupt flag
-		//Etc.
-	
-	}	//This return will be a "retfie", since this is in a #pragma interruptlow section 
-    
-#endif
-
-
+extern unsigned char old_button = 0;
 
 
 /** DECLARATIONS ***************************************************/
 #if defined(__18CXX)
     #pragma code
 #endif
+
+    // String for creating debug messages
+char debugString[80];
+
+bool run = FLAG_TRUE;
+
+bool demo_mode = FLAG_TRUE;
+
+//unsigned char p_intensity=0,table_type=0,cycle_count =0,pattern_speed=0;
+//char p_table=0;
+//unsigned int p_count=0;
+//bool p_up_down=FLAG_FALSE;
+
+unsigned char demo_loops;
 
 /******************************************************************************
  * Function:        void main(void)
@@ -220,12 +195,10 @@ void UserInit(void);
  *
  * Note:            None
  *****************************************************************************/
-#if defined(__18CXX)
-void main(void)
-#else
-int main(void)
-#endif
-{   
+
+void main(void) {
+    unsigned char delay=1;
+    
     InitializeSystem();
 
     while(1)
@@ -256,10 +229,27 @@ int main(void)
 
 		// Application-specific tasks.
 		// Application related code may be added here, or in the ProcessIO() function.
-        ProcessIO();        
+//        ProcessIO();  
+        
+                // Note: Other application specific actions can be placed here
+        if ((wait_timer == 0) && (run == TRUE)) { 
+            wait_timer = 1;
+            delay++;
+#ifndef DEBUG
+            if ((!sw0) || (!sw1) || old_button) {  
+                handle_push_button();
+            } else {
+#endif
+               if (delay > pattern_speed) {
+                  delay = 0; 
+                  update_pattern();
+               }
+#ifndef DEBUG
+            }
+#endif
+        }
     }//end while
 }//end main
-
 
 /********************************************************************
  * Function:        static void InitializeSystem(void)
@@ -383,14 +373,157 @@ void UserInit(void)
     buttonCount = 0;
     buttonPressed = FALSE;
     stringPrinted = TRUE;
+    
+    
+	// Default all pins to digital
+    ADCON1 = 0x00;                                                                                                                                                                                                                                                                                             
 
-    //Initialize all of the LED pins
-//	mInitAllLEDs();
+	// Configure ports as inputs (1) or outputs(0)
+	TRISA = 0b00000000;
+	TRISB = 0b00000000;
+	TRISC = 0b00001000;  //Push Button
 
-    //Initialize the pushbuttons
-//    mInitAllSwitches();
+
+	// Clear all ports
+	PORTA = 0b00000000;
+	PORTB = 0b00000000;
+	PORTC = 0b00000000;
+
+    // setup the LED drivers and SPI buss
+ #define LED_col0 		    PORTCbits.RC0
+ #define LED_col0_dir		TRISCbits.TRISC0
+ #define LED_col1 		    PORTCbits.RC2
+ #define LED_col1_dir		TRISCbits.TRISC2
+ #define LED_col2 		    PORTCbits.RC6
+ #define LED_col2_dir		TRISCbits.TRISC6
+ #define LED_col3 		    PORTCbits.RC7
+ #define LED_col3_dir		TRISCbits.TRISC7
+
+
+ #define LED_R_row0 		PORTAbits.RA0
+ #define LED_R_row0_dir		TRISAbits.TRISA0
+ #define LED_R_row1 		PORTAbits.RA1
+ #define LED_R_row1_dir		TRISAbits.TRISA1
+ #define LED_R_row2 		PORTAbits.RA2
+ #define LED_R_row2_dir		TRISAbits.TRISA2
+ #define LED_R_row3 		PORTAbits.RA3
+ #define LED_R_row3_dir		TRISAbits.TRISA3
+ #define LED_R_row4 		PORTAbits.RA4
+ #define LED_R_row4_dir		TRISAbits.TRISA4
+ #define LED_R_row5 		PORTAbits.RA5
+ #define LED_R_row5_dir		TRISAbits.TRISA5
+ #define LED_R_row6 		PORTAbits.RA6
+ #define LED_R_row6_dir		TRISAbits.TRISA6
+ #define LED_R_row7 		PORTAbits.RA7
+ #define LED_R_row7_dir		TRISAbits.TRISA7
+
+ #define LED_G_row0 		PORTBbits.RB0
+ #define LED_G_row0_dir		TRISBbits.TRISB0
+ #define LED_G_row1 		PORTBbits.RB1
+ #define LED_G_row1_dir		TRISBbits.TRISB1
+ #define LED_G_row2 		PORTBbits.RB2
+ #define LED_G_row2_dir		TRISBbits.TRISB2
+ #define LED_G_row3 		PORTBbits.RB3
+ #define LED_G_row3_dir		TRISBbits.TRISB3
+ #define LED_G_row4 		PORTBbits.RB4
+ #define LED_G_row4_dir		TRISBbits.TRISB4
+ #define LED_G_row5 		PORTBbits.RB5
+ #define LED_G_row5_dir		TRISBbits.TRISB5
+ #define LED_G_row6 		PORTBbits.RB6
+ #define LED_G_row6_dir		TRISBbits.TRISB6
+ #define LED_G_row7 		PORTBbits.RB7
+ #define LED_G_row7_dir		TRISBbits.TRISB7
+
+    LED_R_row0         =0;   //off
+    LED_R_row1         =0;   //off
+    LED_R_row2         =0;   //off
+    LED_R_row3         =0;   //off
+    LED_R_row4         =0;   //off
+    LED_R_row5         =0;   //off
+    LED_R_row6         =0;   //off
+    LED_R_row7         =0;   //off
+
+    LED_G_row0         =0;   //off
+    LED_G_row1         =0;   //off
+    LED_G_row2         =0;   //off
+    LED_G_row3         =0;   //off
+    LED_G_row4         =0;   //off
+    LED_G_row5         =0;   //off
+    LED_G_row6         =0;   //off
+    LED_G_row7         =0;   //off
+
+    LED_R_row0_dir     =0;   //output
+    LED_R_row1_dir     =0;   //output
+    LED_R_row2_dir     =0;   //output
+    LED_R_row3_dir     =0;   //output
+    LED_R_row4_dir     =0;   //output
+    LED_R_row5_dir     =0;   //output
+    LED_R_row6_dir     =0;   //output
+    LED_R_row7_dir     =0;   //output
+
+    LED_G_row0_dir     =0;   //output
+    LED_G_row1_dir     =0;   //output
+    LED_G_row2_dir     =0;   //output
+    LED_G_row3_dir     =0;   //output
+    LED_G_row4_dir     =0;   //output
+    LED_G_row5_dir     =0;   //output
+    LED_G_row6_dir     =0;   //output
+    LED_G_row7_dir     =0;   //output
+
+    LED_col0         =0;   //off
+    LED_col1         =0;   //off
+    LED_col2         =0;   //off
+    LED_col3         =0;   //off
+
+    LED_col0_dir     =0;   //output
+    LED_col1_dir     =0;   //output
+    LED_col2_dir     =0;   //output
+    LED_col3_dir     =0;   //output
+
+//  OpenTimer3
+    T3CON = 0b00000111;
+    T3GCON = 0b00000000;
+   
+
+//  OpenTimer3 defs are wrong on MPLAB C18 v3.45
+//    OpenTimer3(
+//                 ++-------  TMR3CS Timer3 Clock Source Select bits  (00 - FOSC/4)
+//                 ||++-----  T3CKPS<1:0>: Timer3 Input Clock Prescale Select bits (00 - 1:1)
+//                 ||||+----  SOSCEN: Secondary Oscillator Enable Control bit (x)
+//                 |||||+---  T3SYNC: Timer3 External Clock Input Synchronization Control bit (1 - not sync)
+//                 ||||||+--  RD16: 16-Bit Read/Write Mode Enable bit (1 - enable)
+//                 |||||||+-  TMR3ON: Timer3 On bit (1 - enable)
+//                 ||||||||
+//                 0b00000111,                 // Interrupt enabled
+
+//                 +--------  TMR3GE: Timer3 Gate Enable bit (0 - disable)
+//                 |+-------  T3GPOL: Timer3 Gate Polarity bit (x)
+//                 ||+------  T3GTM: Timer3 Gate Toggle Mode bit (x)
+//                 |||+-----  T3GSPM: Timer3 Gate Single-Pulse Mode bit (x)
+//                 ||||+----  T3GGO/DONE: Timer3 Gate Single-Pulse Acquisition Status bit (x)
+//                 |||||+---  T3GVAL: Timer3 Gate Current State bit 
+//                 ||||||++-  T3GSS<1:0>: Timer3 Gate Source Select bits  (xx)
+//                 ||||||||
+//                 0b00000000                   //set timer1 as 16 bit registers
+
+//              );
+
+	RCONbits.IPEN=1;     //Enable priority levels on interrupts
+	RCONbits.SBOREN=0;   //Disable BOR
+
+    IPR2bits.TMR3IP = 1; //Timer3 interrupt priority hi 
+    T3CONbits.TMR3ON = 1;	/* Enable the timer3 */
+    PIE2bits.TMR3IE = 1;	/* Enable timer3 interrupt */	
+    INTCONbits.GIEH = 1; //enable hi pri interrupts
+
+    INTCON2bits.RBPU = 0;
+//    WPUB = 0;                // all Port B pull-ups disabled 
+//    TRSEbits.WPU3E = 1;      // enable Port E pull-up
+//    ANDELE = 0;              // disable port E analog
+
+   clear_display();
 }//end UserInit
-
+#if (0)
 /********************************************************************
  * Function:        void ProcessIO(void)
  *
@@ -431,31 +564,35 @@ void ProcessIO(void)
         stringPrinted = FALSE;
     }
 
-    if(USBUSARTIsTxTrfReady())
+    /* Check to see if there is a transmission in progress, if there isn't, then
+     * we can parse the data, we are reading a stream, so we are looking for a
+     * \n, dumping \r, we might have the start of a message in the buffer.
+     */
+    if( USBUSARTIsTxTrfReady() == true)
     {
-		numBytesRead = getsUSBUSART(USB_Out_Buffer,64);
-		if(numBytesRead != 0)
-		{
-			BYTE i;
-	        
-			for(i=0;i<numBytesRead;i++)
-			{
-				switch(USB_Out_Buffer[i])
-				{
-					case 0x0A:
-					case 0x0D:
-						USB_In_Buffer[i] = USB_Out_Buffer[i];
-						break;
-					default:
-						USB_In_Buffer[i] = USB_Out_Buffer[i] + 1;
-						break;
-				}
+        uint8_t i;
+        uint8_t numBytesRead;
+        static uint8_t readBuffer[CDC_DATA_OUT_EP_SIZE];
+        static uint8_t offset = 0;
 
-			}
+        numBytesRead = getsUSBUSART(&readBuffer[offset], (CDC_DATA_IN_EP_SIZE-offset));
 
-			putUSBUSART(USB_In_Buffer,numBytesRead);
-		}
-	}
+        /* For every byte that was read... */
+        for(i=0; i<numBytesRead; i++)
+        {
+            if ((readBuffer[offset] == 0x0D) || (readBuffer[offset] == 0x0A)) {
+                readBuffer[offset] = 0;
+                if (offset != 0) {
+//                    ParseBlinkieCommand((char *)readBuffer);
+                    CDCTxService();
+                }
+                memcpy(readBuffer,readBuffer+offset+1,numBytesRead-i-1);
+                offset = 0;
+            } else {
+                offset++;
+            }
+        }
+    }
 
     CDCTxService();
 }		//end ProcessIO
@@ -576,6 +713,7 @@ void USBCBWakeFromSuspend(void)
  *******************************************************************/
 void USBCB_SOF_Handler(void)
 {
+#if (0)
     // No need to clear UIRbits.SOFIF to 0 here.
     // Callback caller is already doing that.
 
@@ -602,6 +740,7 @@ void USBCB_SOF_Handler(void)
             buttonCount--;
         }
     }
+#endif
 }
 
 /*******************************************************************
@@ -921,7 +1060,7 @@ void USBCBEP0DataReceived(void)
  *
  * Note:            None
  *******************************************************************/
-BOOL USER_USB_CALLBACK_EVENT_HANDLER(int event, void *pdata, WORD size)
+bool USER_USB_CALLBACK_EVENT_HANDLER(USB_EVENT event, void *pdata, uint16_t size)
 {
     switch( event )
     {
@@ -964,7 +1103,7 @@ BOOL USER_USB_CALLBACK_EVENT_HANDLER(int event, void *pdata, WORD size)
     }      
     return TRUE; 
 }
-
+#endif
 
 /** EOF main.c *************************************************/
 
