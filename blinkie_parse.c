@@ -12,6 +12,7 @@
 #include "main.h"
 //#include "patterns.h"
 //#include "system.h"
+#include <EEP.H>
 
 static uint8_t menuState = 0;
 
@@ -94,16 +95,14 @@ void erase_flash_mem(uint16_t address)
 void store_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, uint8_t plockout[]) {
     char buffer[32];
     
-    buffer[0] = demo_mode;
-    buffer[1] = user_msg_size;
-    buffer[2] = user_id;
-    buffer[3] = plockout[0];
-    buffer[4] = plockout[1];
-    buffer[5] = plockout[2];
-    buffer[6] = plockout[3];
-    
-//    erase_flash_mem((uint16_t) &setting);
-//    write_flash_mem((uint16_t) &setting,buffer);
+    //#include <EEP.H>
+    Write_b_eep(0x00, demo_mode);
+    Write_b_eep(0x01, user_msg_size);
+    Write_b_eep(0x02, user_id);
+    Write_b_eep(0x03, plockout[0]);
+    Write_b_eep(0x04, plockout[1]);
+    Write_b_eep(0x05, plockout[2]);
+    Write_b_eep(0x06, plockout[3]);
 }
 
 void print_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, uint8_t plockout[4]) {
@@ -114,62 +113,6 @@ void print_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, u
     putsUSBUSART(buffer);
 
 }
-
-
-uint8_t packedRead(uint16_t address, bool hiLow) {
-    int h;
-#if (0)    
-    PMCON1bits.CFGS = 0;
-    PMADRL = address & 0x00ff;
-    PMADRH = address >> 8;
-    PMCON1bits.RD = 1;
-    asm("NOP");
-    asm("NOP");
-    if (hiLow == true) {
-        h = PMDATH<<1;
-        if (PMDATL & 0x80) { h++; }
-        return(h);
-    } else {
-        return( PMDATL & 0x7f);
-    }
-#else
-    return(0);
-#endif
-}
-        
-#if (0)
-void PrintPacked(uint16_t address, uint8_t len) {
-    static uint8_t buffer[40];
-//    char buffer2[21];
-    int i;
-    int h,l;
-    
-//    putrsUSBUSART("DDF\r\n");
-    for (i=0; i < len; i=i+2 ) {
-        PMCON1bits.CFGS = 0;
-        PMADRL = address & 0x00ff;
-        PMADRH = address >> 8;
-        PMCON1bits.RD = 1;
-        asm("NOP");
-        asm("NOP");
-        h = PMDATH<<1;
-        if (PMDATL & 0x80) { h++; }
-        l = PMDATL & 0x7f;
-        buffer[i] = h;
-        buffer[i+1] = l;
-//        sprintf(&buffer2[i*2],"%2X%2X ",h, l);
-        address++;
-    }
-    buffer[len] = 0;
-//    buffer2[len*2] = 0;
-    debugOut(buffer);
-}
-#endif
-
-//extern uint8_t * pat2;
-//extern uint8_t * msg1;
-//extern uint8_t * msg2;
-//extern uint8_t * settings;
 
 void ParseBlinkieCommand( char * cLine) {
 
@@ -205,9 +148,9 @@ void ParseBlinkieCommand( char * cLine) {
         case 'U':
             if (len>1) {
                 user_id = atoi(&cLine[1]);
-//                store_settings(demo_mode, user_msg_size, user_id, plockout);
+                store_settings(demo_mode, user_msg_size, user_id, plockout);
             }
-//            print_settings(demo_mode, user_msg_size, user_id, plockout);
+            print_settings(demo_mode, user_msg_size, user_id, plockout);
             break;
         case 'M':
 #if (0)
@@ -231,8 +174,7 @@ void ParseBlinkieCommand( char * cLine) {
 #endif
             break;
         default:
-            putsUSBUSART("Hello World\r\n");
-//DDF              debugPackedOut((uint16_t) &pat2, 17);
+            putsUSBUSART("unknown command\r\n");
               // want a drop though      
         case 'I':
             menuState = 1;
@@ -240,58 +182,44 @@ void ParseBlinkieCommand( char * cLine) {
     }
 }      
 
-#if (0)
-extern uint8_t * pat1;
-extern uint8_t * pat3;
-extern uint8_t * pat4;
-extern uint8_t * pat5;
-extern uint8_t * pat6;
-extern uint8_t * pat7;
-extern uint8_t * pat8;
-#endif
 void doMenu(void) {
     static uint8_t menuOldState;
-#if (0)
+
     if (menuOldState != menuState) {
         switch (menuState) {
             case 0:
             default:
                 return;
-            case 1:
-                debugPackedOut((uint16_t) &pat1, 6);
-                debugPackedOut((uint16_t) &pat1, 6);
-                debugPackedOut((uint16_t) &pat1, 8);
-                debugPackedOut((uint16_t) &pat3, 24);
+            case 1: //do nothing, wait for tx buffer to be empty
                 break;
             case 2:
-                debugPackedOut((uint16_t) &pat1, 6);
-                debugPackedOut((uint16_t) &pat1, 6);
-                debugPackedOut((uint16_t) &pat1, 8);
+                putsUSBUSART("\r\n==================\r\n2DKits.com\r\n");
                 break;
-            case 3: 
-                debugPackedOut((uint16_t) &pat4, 64);
+            case 3:
+                putsUSBUSART("8x16 Bi-Color Matrix\r\n==================\r\n");
                 break;
-            case 4:
-                debugPackedOut((uint16_t) &pat5, 40);
+            case 4: 
+                putsUSBUSART("Commands:\r\n I - info\r\n F - Next Pattern\r\n B - previous Pattern\r\n");
                 break;
             case 5:
-                debugPackedOut((uint16_t) &pat6, 25);
+                putsUSBUSART(" S - Stop Pattern\r\n R - resume Pattern\r\n");
                 break;
             case 6:
-                debugPackedOut((uint16_t) &pat7, 36);
+                putsUSBUSART(" C{[x][y][v]}+ Set LEDs\r\n");
                 break;
             case 7:
-                debugPackedOut((uint16_t) &pat8, 35);
+                putsUSBUSART(" M[msg] - ascii message to display\r\n");
                 break;
             case 8:
-                debugPackedOut((uint16_t) &pat1, 6);
-                debugPackedOut((uint16_t) &pat1, 6);
-                debugPackedOut((uint16_t) &pat1, 8);
+                putsUSBUSART(" U[number] - read and set User id\r\n");
+                break;
+            case 9:
+                putsUSBUSART("==================\r\n");
                 menuState = 0;
                 break;
         }
     }
-#endif
+
     menuOldState = menuState;
     // When the USB buffer is empty, we will send the next chunk
     if ((menuState !=0) && USBUSARTIsTxTrfReady()) {

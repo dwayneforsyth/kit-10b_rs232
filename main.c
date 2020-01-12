@@ -201,6 +201,14 @@ void main(void) {
     
     InitializeSystem();
     
+    demo_mode = Read_b_eep(0x00);
+    user_msg_size  = Read_b_eep(0x01);
+    user_id = Read_b_eep(0x02);
+    plockout[0] = Read_b_eep(0x03);
+    plockout[1] = Read_b_eep(0x04);
+    plockout[2] = Read_b_eep(0x05);
+    plockout[3] = Read_b_eep(0x06);
+    
     led_data[0].red = 0x55;
     led_data[0].green = 0xAA;
 
@@ -234,6 +242,7 @@ void main(void) {
 		// Application related code may be added here, or in the ProcessIO() function.
 //        ProcessIO();  
         APP_DeviceCDCBasicDemoTasks();
+        doMenu();
                 // Note: Other application specific actions can be placed here
         if ((wait_timer == 0) && (run == TRUE)) { 
             wait_timer = 1;
