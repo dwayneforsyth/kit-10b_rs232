@@ -134,15 +134,18 @@ void ParseBlinkieCommand( char * cLine) {
             run = false;
             break;
         case 'C':
-            sprintf(buffer,"len=%d\r\n",len);
-            putsUSBUSART(buffer);
+
+            // passing pointer, non blocking, 2nd print trashes buffer
+//          sprintf(buffer,"len=%d\r\n",len);
+//          putsUSBUSART(buffer);
             for (i=0;i<(len-1);i+=3) {
                 x = cLine[i+1]-'0';
                 y = cLine[i+2]-'0';
                 v = cLine[i+3]-'0';
                 sprintf(buffer,"x=%d,y=%d,v=%d,\r\n",x,y,v);
                 putsUSBUSART(buffer);
-//                LEDS[x][y]=v;
+                led_data[x*8+y].red = (v & 0x01);
+                led_data[x*8+y].green = (v & 0x02);
             }
             break;
         case 'U':

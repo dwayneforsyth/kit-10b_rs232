@@ -209,9 +209,6 @@ void main(void) {
     plockout[2] = Read_b_eep(0x05);
     plockout[3] = Read_b_eep(0x06);
     
-    led_data[0].red = 0x55;
-    led_data[0].green = 0xAA;
-
     while(1)
     {
         #if defined(USB_INTERRUPT)

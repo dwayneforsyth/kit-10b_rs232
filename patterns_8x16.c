@@ -2038,7 +2038,9 @@ const struct s chardata[] = {
 
 
 #define table_count 18  // bad dwayne has a 2nd copy of this in main.c
-const unsigned char *patterns[table_count+1] = {
+
+// not able to make this const! if you try all the address get set to 0x0000
+unsigned char *patterns[table_count+1] = {
    pattern0,
    pattern1,
    pattern2,
@@ -2103,5 +2105,3 @@ const unsigned char pattern_demo_loops[table_count+1] = {
    50,
    5
 }; 
-
-

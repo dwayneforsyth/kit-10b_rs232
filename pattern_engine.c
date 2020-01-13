@@ -75,13 +75,9 @@ void update_pattern() {
    static unsigned char c_red=1, c_green=1;  
    static unsigned char temp_red[8],temp_green[8],char_in,step;
    unsigned char led_row;
-
-   led_data[0].red = 0x55;
-   led_data[0].green = 0xAA;
-   return;
    
 // pull extra info bytes off the front of the pattern;
-
+                
    if (p_count == 0) {
       if ((p_table == 0) && (good_ee_pattern == 3)) {
           get_next_pattern_byte();  //skip over demo flag
@@ -90,9 +86,8 @@ void update_pattern() {
       pattern_speed = get_next_pattern_byte();
       step = 0;
       red_out=1;
-      putUSBUSART("Hello\r\n",7);
    }
-
+    
    switch (table_type) {
    case 1:
       for (i=0;i<16;i++) {
@@ -194,13 +189,13 @@ unsigned char pattern_done()
    
 }
 
-unsigned char get_next_pattern_byte( )
-{
-   if ((p_table == 0) && (good_ee_pattern == 3)) {
-      return( Read_b_eep(p_count++));
-   } else {
-      return(patterns[p_table][p_count++]);
-   }
+unsigned char get_next_pattern_byte( ) {
+    
+    if ((p_table == 0) && (good_ee_pattern == 3)) {
+        return( Read_b_eep(p_count++));
+    } else {
+        return(patterns[p_table][p_count++]);
+    }
 }
 
 unsigned brand()

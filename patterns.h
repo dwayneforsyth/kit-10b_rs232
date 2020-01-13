@@ -29,7 +29,7 @@ inline void setTopOfPattern(void);
 void initPatternTable(void);
 uint8_t packedRead(uint16_t, bool);
 
-const unsigned char *patterns[];
+unsigned char *patterns[];
 extern const struct s chardata[];
 extern uint8_t user_msg_size;
 extern uint16_t pattern_size[];

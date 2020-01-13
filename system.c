@@ -265,10 +265,66 @@ led_strobe1:
       bsf   side_right_out,7, 1 // BANKED
    _endasm
 #endif
+   uint8_t i;
+   uint8_t side_left_out;
+   uint8_t side_right_out;
+   extern uint8_t wait_timer;
+   
 
-//    strobe_LED(side_left_out, side_right_out, strobe );
-    strobe_LED(led_data[0].red, led_data[0].green, strobe );
-    strobe++;
+#if (0) //debug pattern   
+    led_data[0].green = 1;
+    led_data[9].green = 1;
+    led_data[18].green = 1;
+    led_data[27].green = 1;
+    led_data[36].green = 1;
+    led_data[45].green = 1;
+    led_data[54].green = 1;
+    led_data[63].green = 1;
+   
+    led_data[64].red = 1;
+    led_data[73].red = 1;
+    led_data[82].red = 1;
+    led_data[91].red = 1;
+    led_data[100].red = 1;
+    led_data[109].red = 1;
+    led_data[118].red = 1;
+    led_data[127].red = 1;
+#endif
+    
+    switch (strobe) {
+        case 0: //green 0
+        case 2: //red 0
+        case 4: //red 0
+        case 6: //red 0
+        case 8: //red 0
+        case 10: //red 0
+        case 12: //red 0
+        case 14: //red 0
+            side_left_out = side_right_out = 0;
+            for (i=0;i<8;i++) {
+                side_left_out += (led_data[strobe*4+i].green != 0)? 1<<i:0;
+                side_right_out += (led_data[strobe*4+i+64].green != 0)? 1<<i:0;
+            }
+            break;
+        case 1: //red 0
+        case 3: //green 0
+        case 5: //green 0
+        case 7: //green 0
+        case 9: //green 0
+        case 11: //green 0
+        case 13: //green 0
+        case 15: //green 0          
+            side_left_out = side_right_out = 0;
+            for (i=0;i<8;i++) {
+                side_left_out += (led_data[(strobe-1)*4+i].red != 0)? 1<<i:0;
+                side_right_out += (led_data[(strobe-1)*4+i+64].red != 0)? 1<<i:0;
+            }
+            break;
+   }
+
+    strobe_LED(side_left_out, side_right_out, strobe );
+    strobe = (strobe+1) % 16;
+    if (strobe == 0) wait_timer = 0;
     }
 }	//This return will be a "retfie fast", since this is in a #pragma interrupt section 
 #endif

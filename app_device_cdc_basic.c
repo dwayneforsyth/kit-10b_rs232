@@ -94,7 +94,7 @@ void APP_DeviceCDCBasicDemoTasks()
     {
         return;
     }
-        
+#if (0)        
     /* If the user has pressed the button associated with this demo, then we
      * are going to send a "Button Pressed" message to the terminal.
      */
@@ -115,13 +115,14 @@ void APP_DeviceCDCBasicDemoTasks()
         }
     }
     else
+#endif
     {
         /* If the button is released, we can then allow a new message to be
          * sent the next time the button is pressed.
          */
         buttonPressed = false;
     }
-
+    
     /* Check to see if there is a transmission in progress, if there isn't, then
      * we can parse the data, we are reading a stream, so we are looking for a
      * \n, dumping \r, we might have the start of a message in the buffer.
