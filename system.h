@@ -22,6 +22,7 @@ please contact mla_licensing@microchip.com
 
 #include <xc.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 //#include "buttons.h"
 //#include "leds.h"
@@ -37,8 +38,8 @@ please contact mla_licensing@microchip.com
 
 
 typedef struct {
-   unsigned char red;
-   unsigned char green;
+   uint8_t red;
+   uint8_t green;
 } strobes;
 
 extern strobes led_data[128];

@@ -60,21 +60,12 @@ unsigned char fader_cycle=0;
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-unsigned int up_down( unsigned char change, unsigned char data) {
-
-  if (change) {
-      return(MIN(8,data+1));
-  } else {
-      return(MAX(0,(signed char) data-1));
-  }
-}
-
 void update_pattern() {
 
-   unsigned char i, j, temp_in, red_in, green_in, red_out=1, green_out=0;
-   static unsigned char c_red=1, c_green=1;  
-   static unsigned char temp_red[8],temp_green[8],char_in,step;
-   unsigned char led_row;
+   uint8_t i, j, temp_in, red_in, green_in, red_out=1, green_out=0;
+   static uint8_t c_red=1, c_green=1;  
+   static uint8_t temp_red[8],temp_green[8],char_in,step;
+   uint8_t led_row;
    
 // pull extra info bytes off the front of the pattern;
                 
@@ -137,8 +128,8 @@ void update_pattern() {
         if (step>=chardata[char_in].sl) { step=0; }
         else { step++; }
      }
-
      break;
+     
    case 4:
       cycle_count = get_next_pattern_byte();
       for (i=0;i<16;i++) {
@@ -179,7 +170,7 @@ case 5:
    }
 }
 
-unsigned char pattern_done()
+bool pattern_done()
 {
    if ((p_table == 0) && (good_ee_pattern == 3)) {
       return(p_count >= eeprom_msg_size);
@@ -189,7 +180,7 @@ unsigned char pattern_done()
    
 }
 
-unsigned char get_next_pattern_byte( ) {
+uint8_t get_next_pattern_byte( ) {
     
     if ((p_table == 0) && (good_ee_pattern == 3)) {
         return( Read_b_eep(p_count++));
@@ -213,13 +204,7 @@ uint16_t brand()
 
 void handle_push_button() {
 
-#ifdef S4X4
-#define DEMO_MODE_LED 8
-#else
-#define DEMO_MODE_LED 32
-#endif
-
-   unsigned char i, drow;
+   uint8_t drow;
    clear_display();
    if (demo_mode) {
       display_char( 0, 0x44 );
@@ -254,14 +239,6 @@ void handle_push_button() {
          back_pattern();
          old_button = 1;
       }
-   } else {
-//      for (i=0;i++;i<4) {
-//         led_data[i] = led_data_save[i];  // no button, restore the 4 LEDs state.
-//      }
-//      led_data[DEMO_MODE_LED] = led_data_save[4];  // no button, restore the 4 LEDs state.
-      old_button = 0;
-//      sprintf(debugString, "pattern %d %d", p_table, demo_mode);
-// 	  debugOut(debugString);
    }
 #endif
 }

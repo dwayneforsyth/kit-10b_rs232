@@ -66,51 +66,6 @@ strobes led_data[128];
 #pragma config EBTR3    = OFF       // Block 3 Table Read Protect (Block 3 is not protected from table reads executed in other blocks)
 #pragma config EBTRB    = OFF       // Boot Block Table Read Protect (Boot block is not protected from table reads executed in other blocks)
 
-
-
-/*********************************************************************
-* Function: void SYSTEM_Initialize( SYSTEM_STATE state )
-*
-* Overview: Initializes the system.
-*
-* PreCondition: None
-*
-* Input:  SYSTEM_STATE - the state to initialize the system into
-*
-* Output: None
-*
-********************************************************************/
-void SYSTEM_Initialize( SYSTEM_STATE state )
-{
-#if (0)
-    switch(state)
-    {
-
-        case SYSTEM_STATE_USB_START:
-		
-            //Configure oscillator settings for clock settings compatible with USB
-            //operation.  Note: Proper settings depends on USB speed (full or low).
-            #if(USB_SPEED_OPTION == USB_FULL_SPEED)
-                OSCTUNE = 0x80; //3X PLL ratio mode selected
-                OSCCON = 0x70;  //Switch to 16MHz HFINTOSC
-                OSCCON2 = 0x10; //Enable PLL, SOSC, PRI OSC drivers turned off
-                while(OSCCON2bits.PLLRDY != 1);   //Wait for PLL lock
-                ACTCON = 0x90;  //Enable active clock tuning for USB operation
-            #endif
-			
-            LED_Enable(LED_USB_DEVICE_STATE);
-            BUTTON_Enable(BUTTON_DEVICE_CDC_BASIC_DEMO);
-            break;
-			
-        case SYSTEM_STATE_USB_SUSPEND: 
-            break;
-            
-        case SYSTEM_STATE_USB_RESUME:
-            break;
-    }
-#endif
-}
-
 void strobe_LED(unsigned char red, unsigned char green, unsigned char col )
 {
 static unsigned char old_col = 0;
@@ -141,194 +96,37 @@ void interrupt SYS_InterruptHigh(void)
         USBDeviceTasks();
     #endif
 
-	   if (PIR2bits.TMR3IF){  // Interrupt Check	
-      PIR2bits.TMR3IF = 0;
+	if (PIR2bits.TMR3IF){  // Interrupt Check	
+        PIR2bits.TMR3IF = 0;
 
-//   TMR3H = 0xF7;
-  TMR3H = 0xFC;
-   TMR3L = 0;
+        TMR3H = 0xFC;
+        TMR3L = 0;
 
-#if (0)   
-   _asm
-//    our data is on page 1
-      movlb 0x01
-      incf intensity, 0, 1   // W, BANKED    //    W = intensity + 1
-      andlw 0x07                             //    W = W % 8
-      movwf intensity, 1 // BANKED           //    intensity = W
-      bnz   led_strobe1                      //    if (intensity) == 0 then 
-      movlw 0x10
-      incf strobe, 0,1 // W, BANKED         //     W = strobe + 1
-      andlw 0x0f                             //    W = W % 16
-      movwf strobe, 1 // BANKED              //     strobe = W
-      bnz   led_strobe1                      //    if (strobe) == 0 then
-      incf idelay, 1, 1   // F, BANKED       //    W = idelay + 1
-      andlw 0x07                             //    W = W % 8
-      movwf idelay, 1 // BANKED              //    idelay = W
-      bnz   led_strobe1                      //    if (idelay) == 0 then
-      clrf  wait_timer, 1 // BANKED          //    slow pattern clock
-led_strobe1:
-     movlw 0x0E
-     andwf strobe, 0,1 // W, BANKED         //     W = strobe & 0b00001110
-     mullw 0x08                             //     PROD[HL] = W * 8;
-
-//     FRS0L (pointer0 low) = led_data low + PRODL (multiply low)
-      movlw led_data // the "low" is not working!
-      addwf PRODL, 0,0 // W, ACCESS
-      movwf FSR0L, 0 // ACCESS
-
-//    if strobe odd, add +1 (color bit)
-      btfsc strobe,0,1 // 0 bit, BANKED
-      incf  FSR0L, 1,0 // File, ACCESS
-
-//     FRS0H (pointer0 hi) + led_data hi + PRODH (multiply low) + Carry
-//     movlw high led_data
-      movlw 0x02   // the "high" is not working!, led_data is at 0x0200
-      addwfc PRODH, 0,0 // W, ACCESS
-      movwf FSR0H, 0 // ACCESS
-
-      clrf  side_left_out, 1 // BANKED
-//     do this 32 times, skipping every other entry.
-//     contents of pointer0 -> W, pointer0++
-//     compair intensity with W, skip greater then 
-//     set bit or skip
-      incf  intensity, 0, 1 // W BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_left_out,0, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_left_out,1, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_left_out,2, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_left_out,3, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_left_out,4, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_left_out,5, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_left_out,6, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_left_out,7, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-
-      movwf side_right_out , 1  // BANKED temp store W
-
-      movlw 0x70 // add 112 for 2nd LED bank
-      addwf FSR0L, 1,0 // file, ACCESS
-
-      movf side_right_out , 0, 1  // W, BANKED restore W to intestify
-      clrf  side_right_out,1 // BANKED
-
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_right_out,0, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_right_out,1, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_right_out,2, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_right_out,3, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_right_out,4, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_right_out,5, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_right_out,6, 1 // BANKED
-      cpfslt POSTINC0, 0  // ACCESS
-      nop
-      cpfslt POSTINC0, 0  // ACCESS
-      bsf   side_right_out,7, 1 // BANKED
-   _endasm
-#endif
-   uint8_t i;
-   uint8_t side_left_out;
-   uint8_t side_right_out;
-   extern uint8_t wait_timer;
-   static uint8_t intensity = 0;
+        uint8_t i;
+        uint8_t side_left_out;
+        uint8_t side_right_out;
+        extern uint8_t wait_timer;
    
-
-#if (0) //debug pattern   
-    led_data[0].green = 1;
-    led_data[9].green = 1;
-    led_data[18].green = 1;
-    led_data[27].green = 1;
-    led_data[36].green = 1;
-    led_data[45].green = 1;
-    led_data[54].green = 1;
-    led_data[63].green = 1;
-   
-    led_data[64].red = 1;
-    led_data[73].red = 1;
-    led_data[82].red = 1;
-    led_data[91].red = 1;
-    led_data[100].red = 1;
-    led_data[109].red = 1;
-    led_data[118].red = 1;
-    led_data[127].red = 1;
-#endif
-    
-    switch (strobe) {
-        case 0: //green 0
-        case 2: //red 0
-        case 4: //red 0
-        case 6: //red 0
-        case 8: //red 0
-        case 10: //red 0
-        case 12: //red 0
-        case 14: //red 0
-            side_left_out = side_right_out = 0;
+        side_left_out = side_right_out = 0;
+        if ((strobe % 2) == 0) {
             for (i=0;i<8;i++) {
                 side_left_out += (led_data[strobe*4+i].green != 0)? 1<<i:0;
                 side_right_out += (led_data[strobe*4+i+64].green != 0)? 1<<i:0;
             }
-            break;
-        case 1: //red 0
-        case 3: //green 0
-        case 5: //green 0
-        case 7: //green 0
-        case 9: //green 0
-        case 11: //green 0
-        case 13: //green 0
-        case 15: //green 0          
-            side_left_out = side_right_out = 0;
+        } else {          
             for (i=0;i<8;i++) {
                 side_left_out += (led_data[(strobe-1)*4+i].red != 0)? 1<<i:0;
                 side_right_out += (led_data[(strobe-1)*4+i+64].red != 0)? 1<<i:0;
             }
-            break;
-    }   
-    strobe_LED(side_left_out, side_right_out, strobe );
-    strobe = (strobe+1) % 16;
-    if (strobe == 0) {
-        delay = (delay +1) % 8;
-        if (delay == 0) {
-            wait_timer = 0;
         }
-    }
-}	//This return will be a "retfie fast", since this is in a #pragma interrupt section 
+   
+        strobe_LED(side_left_out, side_right_out, strobe );
+        strobe = (strobe+1) % 16;
+        if (strobe == 0) {
+            delay = (delay +1) % 8;
+            if (delay == 0) {
+                wait_timer = 0;
+            }
+        }
+    } 
 }

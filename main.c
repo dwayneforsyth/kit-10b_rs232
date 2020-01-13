@@ -60,6 +60,7 @@
 //#include <timers.h>
 //#include <EEP.H>
 
+#include "main.h"
 
 struct s {
     unsigned char sl;
@@ -72,6 +73,8 @@ extern const unsigned int pattern_size[];
 extern const unsigned char pattern_demo_loops[];
 extern const struct s chardata[]; 
 extern uint8_t pattern_speed;
+
+
 
 // Ensure we have the correct target PIC device family
 #if !defined(__18F4550) && !defined(__18F2550) && !defined(__18F2450) && !defined(__18F25K50)
@@ -134,7 +137,7 @@ unsigned int brand(void);
 unsigned char get_next_pattern_byte(void);
 unsigned char pattern_done(void);     
 
-extern unsigned char old_button = 0;
+extern unsigned char old_button;
 
 
 /** DECLARATIONS ***************************************************/

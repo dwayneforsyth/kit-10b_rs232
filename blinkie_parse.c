@@ -16,82 +16,6 @@
 
 static uint8_t menuState = 0;
 
-//extern uint8_t * setting;
-
-void write_flash_mem(uint16_t address, char buffer[])
-{
-#if (0)
-    uint8_t i;
-
-    INTCONbits.GIE = 0;
-    PMCON1bits.CFGS = 0;
-    PMCON1bits.FREE = 0;
-    PMCON1bits.WREN = 1;
-    PMCON1bits.LWLO = 1;
-
-    PMADRL = address & 0xff;
-    PMADRH = address >> 8;
-
-    // Load the 31 bytes of Write Latches
-    for (i=0;i<31;i++) {
-        PMDATL = buffer[i];
-        PMDATH = 0x34;
-        PMCON2 = 0x55;
-        PMCON2 = 0xAA;
-        PMCON1bits.WR = 1;
-        asm("NOP");
-        asm("NOP");
-        PMADRL++;
-    }
-    PMDATL = buffer[31];
-    PMDATH = 0x34;
-    // Flash the 32 bytes of data
-
-    PMCON1bits.LWLO = 0;
-    asm("BANKSEL PMCON2");  // delete this and it stops working, compiler bug?
-
-    PMCON2 = 0x55;
-    PMCON2 = 0xAA;
-    PMCON1bits.WR = 1;
-    asm("NOP");
-    asm("NOP");
-
-    PMCON1bits.WREN = 0;
-    INTCONbits.GIE = 1;
-#endif
-}
-
-void erase_flash_mem(uint16_t address)
-{
-#if (0)
-    char buffer[32];
-    
-    INTCONbits.GIE = 0;
-    PMADRL = address & 0xff;
-    PMADRH = address>>8;
-
-//  when I deleted this printf, the code stopped working.
-//  think we are missing a delay
-    sprintf(buffer,"erase flase h=%X,l=%X\r\n",PMADRH,PMADRL);
-    debugOut(buffer);
-    
-    PMCON1bits.CFGS = 0;
-    PMCON1bits.FREE = 1;
-    PMCON1bits.WREN = 1;
-    INTCONbits.GIE = 1;
-
-    PMCON2 = 0x55;
-    PMCON2 = 0xAA;
-    PMCON1bits.WR = 1;
-    asm("NOP");
-    asm("NOP");
-
-
-    PMCON1bits.WREN = 0;
-    INTCONbits.GIE = 1;
-#endif
-}
-
 void store_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, uint8_t plockout[]) {
     char buffer[32];
     
@@ -105,7 +29,7 @@ void store_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, u
     Write_b_eep(0x06, plockout[3]);
 }
 
-void print_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, uint8_t plockout[4]) {
+void print_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, uint8_t plockout[]) {
     char buffer[60];
 
     sprintf(buffer,"demo=%d, msize=%d, id=%d, pattern=%d, run=%d, plock=%X%X\r\n",
@@ -177,7 +101,7 @@ void ParseBlinkieCommand( char * cLine) {
 #endif
             break;
         default:
-            putsUSBUSART("unknown command\r\n");
+            putsUSBUSART((char *) "unknown command\r\n");
               // want a drop though      
         case 'I':
             menuState = 1;
