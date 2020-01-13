@@ -198,19 +198,15 @@ unsigned char get_next_pattern_byte( ) {
     }
 }
 
-unsigned brand()
+uint16_t brand()
 {
-#if (0)
-    static unsigned int lfsr = 0xACE1 ;
-    unsigned int bit;
+    static uint16_t lfsr = 0xACE1 ;
+    uint16_t bit1;
 
-    bit  = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5) ) & 1;
-    lfsr =  (lfsr >> 1) | (bit << 15);
+    bit1  = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5) ) & 1;
+    lfsr =  (lfsr >> 1) | (bit1 << 15);
 
     return lfsr;
-#else
-    return(1);
-#endif
 }
 
 
