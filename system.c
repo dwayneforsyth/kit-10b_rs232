@@ -135,12 +135,12 @@ if (old_col!=col) {
 void interrupt SYS_InterruptHigh(void)
 {
     static uint8_t strobe=0;
+    static uint8_t delay=0;
 
     #if defined(USB_INTERRUPT)
         USBDeviceTasks();
     #endif
 
-#if (1)
 	   if (PIR2bits.TMR3IF){  // Interrupt Check	
       PIR2bits.TMR3IF = 0;
 
@@ -269,6 +269,7 @@ led_strobe1:
    uint8_t side_left_out;
    uint8_t side_right_out;
    extern uint8_t wait_timer;
+   static uint8_t intensity = 0;
    
 
 #if (0) //debug pattern   
@@ -320,11 +321,14 @@ led_strobe1:
                 side_right_out += (led_data[(strobe-1)*4+i+64].red != 0)? 1<<i:0;
             }
             break;
-   }
-
+    }   
     strobe_LED(side_left_out, side_right_out, strobe );
     strobe = (strobe+1) % 16;
-    if (strobe == 0) wait_timer = 0;
+    if (strobe == 0) {
+        delay = (delay +1) % 8;
+        if (delay == 0) {
+            wait_timer = 0;
+        }
     }
 }	//This return will be a "retfie fast", since this is in a #pragma interrupt section 
-#endif
+}

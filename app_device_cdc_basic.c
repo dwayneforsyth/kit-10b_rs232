@@ -80,7 +80,7 @@ void APP_DeviceCDCBasicDemoTasks()
     /* If the USB device isn't configured yet, we can't really do anything
      * else since we don't have a host to talk to.  So jump back to the
      * top of the while loop. */
-    led_data[0].red = 0x01;
+    
     if( USBGetDeviceState() < CONFIGURED_STATE )
     {
         return;
@@ -131,8 +131,6 @@ void APP_DeviceCDCBasicDemoTasks()
     {
         uint8_t i;
         uint8_t numBytesRead;
-
-        led_data[0].red = 0x02;
         
         numBytesRead = getsUSBUSART(&readBuffer[offset], (CDC_DATA_IN_EP_SIZE-offset));
 
