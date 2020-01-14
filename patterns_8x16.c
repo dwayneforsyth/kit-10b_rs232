@@ -21,9 +21,9 @@
 //**********************************************************************
 // DF1 - test planes
 //**********************************************************************
+#include <stdint.h>
 
-
-const unsigned char pattern0[] = {
+const  uint8_t pattern0[] = {
      0x01,0x10,
 //--- Frame 1,
      0b11111111, 0b00000000,
@@ -849,7 +849,45 @@ const unsigned char pattern0[] = {
 //**********************************************************************
 // Three boxs moving
 //**********************************************************************
-const unsigned char pattern1[] = {
+const  uint8_t  pattern1[] = {
+     0x02,0x04,
+//--- Frame 1,
+     0b00000001, 0b00000000,
+     0b00000011, 0b00000000,
+     0b00000111, 0b00000000,
+     0b00001111, 0b00000000,
+     0b00011111, 0b00000000,
+     0b00111111, 0b00000000,
+     0b01111111, 0b00000000,
+     0b11111111, 0b00000000,
+     0b01111111, 0b10000000,
+     0b00111111, 0b11000000,
+     0b00011111, 0b11100000,
+     0b00001111, 0b11110000,
+     0b00000111, 0b11111000,
+     0b00000011, 0b11111100,
+     0b00000001, 0b11111110,
+     0b00000000, 0b11111111,
+     0b00000001, 0b11111111,
+     0b00000011, 0b11111111,
+     0b00000111, 0b11111111,
+     0b00001111, 0b11111111,
+     0b00011111, 0b11111111,
+     0b00111111, 0b11111111,
+     0b01111111, 0b11111111,
+     0b11111111, 0b11111111,
+ //    0b01111111, 0b01111111,
+ //    0b00111111, 0b00111111,
+ //    0b00011111, 0b00011111,
+ //    0b00001111, 0b00001111,
+ //    0b00000111, 0b00000111,
+ //    0b00000011, 0b00000011,
+ //    0b00000001, 0b00000001,
+};
+//**********************************************************************
+// Musecon
+// **********************************************************************
+const  uint8_t  pattern2[] = {
      0x02,0x04,
 //--- Frame 1,
      0b00000001, 0b00000000,
@@ -884,17 +922,14 @@ const unsigned char pattern1[] = {
      0b00000011, 0b00000011,
      0b00000001, 0b00000001,
 };
-//**********************************************************************
-// Musecon
-// **********************************************************************
-
+#if (0)
 const char pattern2[] = 
        "\x03\x04"
        "\x03"
        "   Build-a-Blinkie"
        "\x01"
        ".org    ";
-
+#endif
 //**********************************************************************
 // Random pure colors
 //**********************************************************************
@@ -2041,25 +2076,25 @@ const struct s chardata[] = {
 
 // not able to make this const! if you try all the address get set to 0x0000
 unsigned char *patterns[table_count+1] = {
-   pattern0,
-   pattern1,
-   pattern2,
-   pattern3,
-   pattern4,
-   pattern5,
-   pattern6,
-   pattern7,
-   pattern8,
-   pattern9,
-   pattern10,
-   pattern11,
-   pattern12,
-   pattern13,
-   pattern14,
-   pattern15,
-   pattern16,
-   pattern17,
-   pattern18
+   (unsigned char *)pattern0,
+   (unsigned char *)pattern1,
+   (unsigned char *)pattern2,
+   (unsigned char *)pattern3,
+   (unsigned char *)pattern4,
+   (unsigned char *)pattern5,
+   (unsigned char *)pattern6,
+   (unsigned char *)pattern7,
+   (unsigned char *)pattern8,
+   (unsigned char *)pattern9,
+   (unsigned char *)pattern10,
+   (unsigned char *)pattern11,
+   (unsigned char *)pattern12,
+   (unsigned char *)pattern13,
+   (unsigned char *)pattern14,
+   (unsigned char *)pattern15,
+   (unsigned char *)pattern16,
+   (unsigned char *)pattern17,
+   (unsigned char *)pattern18
 };
 
 const unsigned int pattern_size[table_count+1] = {

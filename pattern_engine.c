@@ -36,25 +36,25 @@
 #include "ascii_table.h"
 #include "patterns.h"
 
-void add_and_shift( unsigned char red_in, unsigned char green_in);
+void add_and_shift( uint8_t red_in, uint8_t green_in);
 unsigned brand();
 void next_pattern(void);
 void back_pattern(void);
 void clear_display();
-unsigned char display_char( unsigned char row, unsigned char char_in );
+uint8_t display_char( uint8_t row, uint8_t char_in );
 
-unsigned char p_intensity=0,table_type=0,cycle_count =0,pattern_speed=0;
+uint8_t p_intensity=0,table_type=0,cycle_count =0,pattern_speed=0;
 char p_table=0;
-unsigned int p_count=0;
+uint8_t p_count=0;
 bool p_up_down=false;
-unsigned int good_ee_pattern;
+uint8_t good_ee_pattern;
 uint8_t demo_loops;
 extern uint8_t demo_mode;
-unsigned int eeprom_msg_size=0;
-unsigned char old_button = 0;
+uint8_t eeprom_msg_size=0;
+uint8_t old_button = 0;
 
 
-unsigned char fader_cycle=0;
+uint8_t fader_cycle=0;
 // unsigned char button_delay=0
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -80,7 +80,7 @@ void update_pattern() {
    }
     
    switch (table_type) {
-   case 1:
+   case 1: 
       for (i=0;i<16;i++) {
          temp_in = get_next_pattern_byte();
          led_row = i*8;
@@ -243,8 +243,8 @@ void handle_push_button() {
 #endif
 }
 
-unsigned char display_char( unsigned char row, unsigned char char_in ) {
-     unsigned char step, red_in, green_in, offset;
+uint8_t display_char( uint8_t row, uint8_t char_in ) {
+     uint8_t step, red_in, green_in, offset;
 
 
      char_in = char_in - 0x20;
@@ -277,9 +277,9 @@ unsigned char display_char( unsigned char row, unsigned char char_in ) {
      return(row);
 }
 
-void add_and_shift( unsigned char red_in, unsigned char green_in) {
+void add_and_shift( uint8_t red_in, uint8_t green_in) {
 
-   unsigned char i;
+   uint8_t i;
    for (i=0;i<120;i++) {
       led_data[i].red =   led_data[i+8].red;
       led_data[i].green = led_data[i+8].green;
@@ -321,7 +321,7 @@ void back_pattern(void) {
 
 
 void clear_display() {
-   unsigned char i;
+   uint8_t i;
 
    for (i=0;i<128;i++) {
       led_data[i].red = 0X00;

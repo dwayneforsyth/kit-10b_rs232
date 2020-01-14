@@ -66,9 +66,9 @@ strobes led_data[128];
 #pragma config EBTR3    = OFF       // Block 3 Table Read Protect (Block 3 is not protected from table reads executed in other blocks)
 #pragma config EBTRB    = OFF       // Boot Block Table Read Protect (Boot block is not protected from table reads executed in other blocks)
 
-void strobe_LED(unsigned char red, unsigned char green, unsigned char col )
+void strobe_LED(uint8_t red, uint8_t green, uint8_t col )
 {
-static unsigned char old_col = 0;
+static uint8_t old_col = 0;
 
 //  all col off 
 if (old_col!=col) {
@@ -123,7 +123,7 @@ void interrupt SYS_InterruptHigh(void)
         strobe_LED(side_left_out, side_right_out, strobe );
         strobe = (strobe+1) % 16;
         if (strobe == 0) {
-            delay = (delay +1) % 8;
+            delay = (delay +1) % 8; //8
             if (delay == 0) {
                 wait_timer = 0;
             }
