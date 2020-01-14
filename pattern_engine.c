@@ -45,7 +45,7 @@ uint8_t display_char( uint8_t row, uint8_t char_in );
 
 uint8_t p_intensity=0,table_type=0,cycle_count =0,pattern_speed=0;
 char p_table=0;
-uint8_t p_count=0;
+uint16_t p_count=0;
 bool p_up_down=false;
 uint8_t good_ee_pattern;
 uint8_t demo_loops;
