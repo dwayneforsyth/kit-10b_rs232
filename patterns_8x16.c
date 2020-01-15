@@ -920,7 +920,7 @@ const char pattern4[] =
 const char pattern5[] = 
        "\x03\x04"
        "\x02"
-       "   I went to Learn-to-Solder and built this "
+       "   I went to a Learn-to-Solder Workshop and built this "
        "\x03"
        "cool "
        "\x01"
