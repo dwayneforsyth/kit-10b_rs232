@@ -78,7 +78,7 @@ void update_pattern() {
       step = 0;
       red_out=1;
    }
-    
+   
    switch (table_type) {
    case 1: 
       for (i=0;i<16;i++) {
@@ -239,6 +239,8 @@ void handle_push_button() {
          back_pattern();
          old_button = 1;
       }
+   } else if (old_button > BUTTON_DELAY) {
+        old_button = 0; 
    }
 #endif
 }
