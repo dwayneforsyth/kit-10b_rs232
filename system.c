@@ -99,25 +99,49 @@ void interrupt SYS_InterruptHigh(void)
 	if (PIR2bits.TMR3IF){  // Interrupt Check	
         PIR2bits.TMR3IF = 0;
 
-        TMR3H = 0xFC;
+        TMR3H = 0xFA;
         TMR3L = 0;
 
         uint8_t i;
-        uint8_t side_left_out;
-        uint8_t side_right_out;
-        extern uint8_t wait_timer;
+        uint8_t side_left_out = 0;
+        uint8_t side_right_out = 0;
+        extern volatile uint8_t wait_timer;
    
         side_left_out = side_right_out = 0;
         if ((strobe % 2) == 0) {
-            for (i=0;i<8;i++) {
-                side_left_out += (led_data[strobe*4+i].green != 0)? 1<<i:0;
-                side_right_out += (led_data[strobe*4+i+64].green != 0)? 1<<i:0;
-            }
+            side_left_out  += (led_data[strobe*4   ].green != 0)? 0x01:0;
+            side_left_out  += (led_data[strobe*4+1 ].green != 0)? 0x02:0;
+            side_left_out  += (led_data[strobe*4+2 ].green != 0)? 0x04:0;
+            side_left_out  += (led_data[strobe*4+3 ].green != 0)? 0x08:0;
+            side_left_out  += (led_data[strobe*4+4 ].green != 0)? 0x10:0;
+            side_left_out  += (led_data[strobe*4+5 ].green != 0)? 0x20:0;
+            side_left_out  += (led_data[strobe*4+6 ].green != 0)? 0x40:0;
+            side_left_out  += (led_data[strobe*4+7 ].green != 0)? 0x80:0;
+            side_right_out += (led_data[strobe*4+64].green != 0)? 0x01:0;
+            side_right_out += (led_data[strobe*4+65].green != 0)? 0x02:0;
+            side_right_out += (led_data[strobe*4+66].green != 0)? 0x04:0;
+            side_right_out += (led_data[strobe*4+67].green != 0)? 0x08:0;
+            side_right_out += (led_data[strobe*4+68].green != 0)? 0x10:0;
+            side_right_out += (led_data[strobe*4+69].green != 0)? 0x20:0;
+            side_right_out += (led_data[strobe*4+70].green != 0)? 0x40:0;
+            side_right_out += (led_data[strobe*4+71].green != 0)? 0x80:0;
         } else {          
-            for (i=0;i<8;i++) {
-                side_left_out += (led_data[(strobe-1)*4+i].red != 0)? 1<<i:0;
-                side_right_out += (led_data[(strobe-1)*4+i+64].red != 0)? 1<<i:0;
-            }
+            side_left_out  += (led_data[(strobe-1)*4+0 ].red != 0)? 0x01:0;
+            side_left_out  += (led_data[(strobe-1)*4+1 ].red != 0)? 0x02:0;
+            side_left_out  += (led_data[(strobe-1)*4+2 ].red != 0)? 0x04:0;
+            side_left_out  += (led_data[(strobe-1)*4+3 ].red != 0)? 0x08:0;
+            side_left_out  += (led_data[(strobe-1)*4+4 ].red != 0)? 0x10:0;
+            side_left_out  += (led_data[(strobe-1)*4+5 ].red != 0)? 0x20:0;
+            side_left_out  += (led_data[(strobe-1)*4+6 ].red != 0)? 0x40:0;
+            side_left_out  += (led_data[(strobe-1)*4+7 ].red != 0)? 0x80:0;
+            side_right_out += (led_data[(strobe-1)*4+64].red != 0)? 0x01:0;
+            side_right_out += (led_data[(strobe-1)*4+65].red != 0)? 0x02:0;
+            side_right_out += (led_data[(strobe-1)*4+66].red != 0)? 0x04:0;
+            side_right_out += (led_data[(strobe-1)*4+67].red != 0)? 0x08:0;
+            side_right_out += (led_data[(strobe-1)*4+68].red != 0)? 0x10:0;
+            side_right_out += (led_data[(strobe-1)*4+69].red != 0)? 0x20:0;
+            side_right_out += (led_data[(strobe-1)*4+70].red != 0)? 0x40:0;
+            side_right_out += (led_data[(strobe-1)*4+71].red != 0)? 0x80:0;
         }
    
         strobe_LED(side_left_out, side_right_out, strobe );
