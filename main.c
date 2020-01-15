@@ -105,7 +105,8 @@ uint8_t user_msg_size; //DDF
 uint8_t user_id = 0;
 uint8_t plockout[4];
 
-uint8_t side_left_out=0, side_right_out=0, wait_timer = 1;
+uint8_t side_left_out=0, side_right_out=0;
+volatile uint8_t wait_timer = 1;
 uint8_t strobe = 0;
 uint8_t intensity = 0;
 uint8_t idelay = 0;
@@ -232,7 +233,9 @@ static void InitializeSystem(void)
             OSCTUNE = 0x80; //3X PLL ratio mode selected
             OSCCON = 0x70;  //Switch to 16MHz HFINTOSC
             OSCCON2 = 0x10; //Enable PLL, SOSC, PRI OSC drivers turned off
+#ifndef DEBUG
             while(OSCCON2bits.PLLRDY != 1);   //Wait for PLL lock
+#endif
             *((unsigned char*)0xFB5) = 0x90;  //Enable active clock tuning for USB operation
         #endif
         //Configure all I/O pins for digital mode (except RA0/AN0 which has POT on demo board)

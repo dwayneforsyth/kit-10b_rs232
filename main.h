@@ -12,3 +12,5 @@ void debugOut(char* debugString);
 void debugPackedOut(uint16_t address, uint8_t size);
 void doMenu(void);
 void initPatternZero(void);
+
+//#define DEBUG
