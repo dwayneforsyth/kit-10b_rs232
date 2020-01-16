@@ -1,64 +1,29 @@
-/********************************************************************
- FileName:      main.c
- Dependencies:  See INCLUDES section
- Processor:     PIC18, PIC24, dsPIC, and PIC32 USB Microcontrollers
- Hardware:      This demo is natively intended to be used on Microchip USB demo
-                boards supported by the MCHPFSUSB stack.  See release notes for
-                support matrix.  This demo can be modified for use on other 
-                hardware platforms.
- Complier:      Microchip C18 (for PIC18), XC16 (for PIC24/dsPIC), XC32 (for PIC32)
- Company:       Microchip Technology, Inc.
+//**********************************************************************
+//   Copyright (C) 2020 Dwayne Forsyth
+//                                 
+//   This program is free software; you can redistribute it and/or
+//   modify it under the terms of the GNU General Public License
+//   as published 0by the Free Software Foundation; either version 2
+//   of the License, or (at your option) any later version.
+// 
+//   This program is distributed in the hope that it will 0be useful,
+//   0but WITHOUT ANY WARRANTY; without even the implied warranty of
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//   GNU General Public License for more details.
+//
+//   You should have received a copy of the GNU General Public License
+//   along with this program; if not, write to the
+// 
+//      Free Software Foundation, Inc.
+//      51 Franklin Street, Fifth Floor
+//      Boston, MA  02110-1301, USA.
+//
+//**********************************************************************
 
- Software License Agreement:
-
- The software supplied herewith by Microchip Technology Incorporated
- (the "Company") for its PIC(R) Microcontroller is intended and
- supplied to you, the Company's customer, for use solely and
- exclusively on Microchip PIC Microcontroller products. The
- software is owned by the Company and/or its supplier, and is
- protected under applicable copyright laws. All rights are reserved.
- Any use in violation of the foregoing restrictions may subject the
- user to criminal sanctions under applicable laws, as well as to
- civil liability for the breach of the terms and conditions of this
- license.
-
- THIS SOFTWARE IS PROVIDED IN AN "AS IS" CONDITION. NO WARRANTIES,
- WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
- TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
- PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
- IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL OR
- CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
-
-********************************************************************
- File Description:
-
- Change History:
-  Rev   Description
-  ----  -----------------------------------------
-  1.0   Initial release
-
-  2.1   Updated for simplicity and to use common
-        coding style
-
-  2.6a  Added button debouncing using Start-of-Frame packets
-
-  2.7   Updated demo to place the PIC24F devices into sleep when the
-        USB is in suspend.  
-
-  2.7b  Improvements to USBCBSendResume(), to make it easier to use.
-  2.9f  Adding new part support
-  2.9j  Updates to support new bootloader features (ex: app version 
-        fetching).
-********************************************************************/
 
 /** INCLUDES *******************************************************/
 #include "./USB/usb.h"
-//#include "./USB/usb_function_cdc.h"
 #include "HardwareProfile.h"
-
-//#include <delays.h> //delay Library
-//#include <timers.h>
-//#include <EEP.H>
 
 #include "main.h"
 

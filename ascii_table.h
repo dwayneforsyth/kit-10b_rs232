@@ -1,5 +1,5 @@
 //**********************************************************************
-//   Copyright (C) 2009 Dwayne Forsyth
+//   Copyright (C) 2020 Dwayne Forsyth
 //                                 
 //   This program is free software; you can redistribute it and/or
 //   modify it under the terms of the GNU General Public License
@@ -20,9 +20,12 @@
 //
 //**********************************************************************
 
+#ifndef ASCII_TABLE_H
+#define ASCII_TABLE_H
 struct s {
     unsigned char sl;
     char ch[5];
 };
 
 #define table_count 11 
+#endif

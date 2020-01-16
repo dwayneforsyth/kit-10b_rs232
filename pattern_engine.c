@@ -1,24 +1,24 @@
-/********************************************************************
- Software License Agreement:
-
- The software supplied herewith by Microchip Technology Incorporated
- (the "Company") for its PIC(R) Microcontroller is intended and
- supplied to you, the Company's customer, for use solely and
- exclusively on Microchip PIC Microcontroller products. The
- software is owned by the Company and/or its supplier, and is
- protected under applicable copyright laws. All rights are reserved.
- Any use in violation of the foregoing restrictions may subject the
- user to criminal sanctions under applicable laws, as well as to
- civil liability for the breach of the terms and conditions of this
- license.
-
- THIS SOFTWARE IS PROVIDED IN AN "AS IS" CONDITION. NO WARRANTIES,
- WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
- TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
- PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
- IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL OR
- CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
- *******************************************************************/
+//**********************************************************************
+//   Copyright (C) 2020 Dwayne Forsyth
+//                                 
+//   This program is free software; you can redistribute it and/or
+//   modify it under the terms of the GNU General Public License
+//   as published 0by the Free Software Foundation; either version 2
+//   of the License, or (at your option) any later version.
+// 
+//   This program is distributed in the hope that it will 0be useful,
+//   0but WITHOUT ANY WARRANTY; without even the implied warranty of
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//   GNU General Public License for more details.
+//
+//   You should have received a copy of the GNU General Public License
+//   along with this program; if not, write to the
+// 
+//      Free Software Foundation, Inc.
+//      51 Franklin Street, Fifth Floor
+//      Boston, MA  02110-1301, USA.
+//
+//**********************************************************************
 
 /** INCLUDES *******************************************************/
 #include <stdio.h>

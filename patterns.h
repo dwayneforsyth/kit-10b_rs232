@@ -1,5 +1,5 @@
 //**********************************************************************
-//   Copyright (C) 2009 Dwayne Forsyth
+//   Copyright (C) 2020 Dwayne Forsyth
 //                                 
 //   This program is free software; you can redistribute it and/or
 //   modify it under the terms of the GNU General Public License
@@ -20,6 +20,9 @@
 //
 //**********************************************************************
 
+#ifndef PATTERNS_H
+#define PATTERNS_H
+
 //uint8_t get_next_pattern_byte(uint8_t pattern);
 uint8_t get_next_pattern_byte();
 //uint8_t pattern_done(uint8_t pattern);
@@ -34,4 +37,4 @@ extern const struct s chardata[];
 extern uint8_t user_msg_size;
 extern uint16_t pattern_size[];
 extern uint8_t pattern_demo_loops[];
-
+#endif
