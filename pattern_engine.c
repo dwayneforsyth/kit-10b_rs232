@@ -35,6 +35,7 @@
 #include "patterns.h"
 #include "ascii_table.h"
 #include "patterns.h"
+#include "main.h"
 
 void add_and_shift( uint8_t red_in, uint8_t green_in);
 unsigned brand();
@@ -50,8 +51,8 @@ bool p_up_down=false;
 uint8_t good_ee_pattern;
 uint8_t demo_loops;
 extern uint8_t demo_mode;
-uint8_t eeprom_msg_size=0;
 uint8_t old_button = 0;
+
 
 
 uint8_t fader_cycle=0;
@@ -62,7 +63,7 @@ uint8_t fader_cycle=0;
 
 void update_pattern() {
 
-   uint8_t i, j, temp_in, red_in, green_in, red_out=1, green_out=0;
+   uint8_t i, j, temp_in, red_in=1, green_in=1, red_out=1, green_out=0;
    static uint8_t c_red=1, c_green=1;  
    static uint8_t temp_red[8],temp_green[8],char_in,step;
    uint8_t led_row;
@@ -70,9 +71,6 @@ void update_pattern() {
 // pull extra info bytes off the front of the pattern;
                 
    if (p_count == 0) {
-      if ((p_table == 0) && (good_ee_pattern == 3)) {
-          get_next_pattern_byte();  //skip over demo flag
-      }
       table_type = get_next_pattern_byte();
       pattern_speed = get_next_pattern_byte();
       step = 0;
@@ -164,7 +162,7 @@ case 5:
    if (pattern_done()) {
       p_count = 0;
       demo_loops = demo_loops - 1;
-      if ((demo_loops == 0) & (demo_mode == TRUE)) {
+      if ((demo_loops == 0) & (demo_mode != false)) {
          next_pattern();
       }
    }
@@ -173,7 +171,7 @@ case 5:
 bool pattern_done()
 {
    if ((p_table == 0) && (good_ee_pattern == 3)) {
-      return(p_count >= eeprom_msg_size);
+      return(p_count >= user_msg_size);
    } else {
       return(p_count >= pattern_size[p_table]);
    }
@@ -181,9 +179,8 @@ bool pattern_done()
 }
 
 uint8_t get_next_pattern_byte( ) {
-    
     if ((p_table == 0) && (good_ee_pattern == 3)) {
-        return( Read_b_eep(p_count++));
+        return(Read_b_eep(p_count++));
     } else {
         return(patterns[p_table][p_count++]);
     }
@@ -226,7 +223,7 @@ void handle_push_button() {
       if (old_button > BUTTON_DELAY) {
          demo_mode = !demo_mode;
          Busy_eep();
-         Write_b_eep(0x00, demo_mode);
+         Write_b_eep(SETTING_EE_START, demo_mode);
          old_button = 1;
       }
    } else if (!sw1) {

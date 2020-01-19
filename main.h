@@ -36,5 +36,7 @@ void debugPackedOut(uint16_t address, uint8_t size);
 void doMenu(void);
 void initPatternZero(void);
 
+#define SETTING_EE_START 0xE0
+
 //#define DEBUG
 #endif

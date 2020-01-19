@@ -42,45 +42,71 @@ void store_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, u
     char buffer[32];
     
     //#include <EEP.H>
-    Write_b_eep(0x00, demo_mode);
-    Write_b_eep(0x01, user_msg_size);
-    Write_b_eep(0x02, user_id);
-    Write_b_eep(0x03, plockout[0]);
-    Write_b_eep(0x04, plockout[1]);
-    Write_b_eep(0x05, plockout[2]);
-    Write_b_eep(0x06, plockout[3]);
+    Write_b_eep(SETTING_EE_START, demo_mode);
+    Write_b_eep(SETTING_EE_START+1, user_msg_size);
+    Write_b_eep(SETTING_EE_START+2, user_id);
+    Write_b_eep(SETTING_EE_START+3, plockout[0]);
+    Write_b_eep(SETTING_EE_START+4, plockout[1]);
+    Write_b_eep(SETTING_EE_START+5, plockout[2]);
+    Write_b_eep(SETTING_EE_START+6, plockout[3]);
 }
 
-void print_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, uint8_t plockout[]) {
-    char buffer[60];
+extern uint8_t good_ee_pattern;
+void load_settings(void) {
+    demo_mode = Read_b_eep(SETTING_EE_START);
+    user_msg_size  = Read_b_eep(SETTING_EE_START+1);
+    user_id = Read_b_eep(SETTING_EE_START+2);
+    plockout[0] = Read_b_eep(SETTING_EE_START+3);
+    plockout[1] = Read_b_eep(SETTING_EE_START+4);
+    plockout[2] = Read_b_eep(SETTING_EE_START+5);
+    plockout[3] = Read_b_eep(SETTING_EE_START+6);
+    good_ee_pattern = Read_b_eep(0x00);
+}
 
-    sprintf(buffer,"demo=%d, msize=%d, id=%d, pattern=%d, run=%d, plock=%X%X\r\n",
-                demo_mode, user_msg_size, user_id, p_table, run, plockout[0],plockout[1]);
+extern uint8_t demo_loops;
+void print_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, uint8_t plockout[]) {
+    char buffer[80];
+
+    sprintf(buffer,"demo=%d, msize=%d, id=%d, pattern=%d, run=%d, demo=%d, loops=%d plock=%X%X\r\n",
+                demo_mode, user_msg_size, user_id, p_table, run, demo_mode, demo_loops, plockout[0],plockout[1]);
     putsUSBUSART(buffer);
 
 }
 
+uint16_t p_count=0;
 void ParseBlinkieCommand( char * cLine) {
 
     uint8_t len = strlen(cLine);
     uint8_t i,x,y,v;
     char buffer[40];
+    
+    if (len == 0) {
+        menuState = 1;
+        return;
+    }
 
     switch (cLine[0]) {
         case 'F':
             next_pattern();
             break;
+            
         case 'B':
             back_pattern();
             break;
+            
         case 'R':
             run = true;
             break;
+            
         case 'S':
             run = false;
             break;
+            
+        case 'D':
+            demo_mode = true;
+            break;
+            
         case 'C':
-
             // passing pointer, non blocking, 2nd print trashes buffer
 //          sprintf(buffer,"len=%d\r\n",len);
 //          putsUSBUSART(buffer);
@@ -94,6 +120,7 @@ void ParseBlinkieCommand( char * cLine) {
                 led_data[x*8+y].green = (v & 0x02);
             }
             break;
+            
         case 'U':
             if (len>1) {
                 user_id = atoi(&cLine[1]);
@@ -101,27 +128,20 @@ void ParseBlinkieCommand( char * cLine) {
             }
             print_settings(demo_mode, user_msg_size, user_id, plockout);
             break;
+            
         case 'M':
-#if (0)
-           if (len-1 > 30) {
-                erase_flash_mem((uint16_t) &msg2);
-                write_flash_mem((uint16_t) &msg2,&cLine[31]);
+	        Write_b_eep(0x00, 0x03); // pattern = 3
+            Write_b_eep(0x01, 0x03); // speed = 3
+            Write_b_eep(0x02, 0x03); // color = red+green
+            for (i=1;i<len;i++) {
+                Write_b_eep(i+2, cLine[i]);
             }
-
-	        buffer[0] = 0x03;
-	        buffer[1] = 0x03;
-	        memcpy(&buffer[2],&cLine[1],(len>31)?31:len-1);
-            erase_flash_mem((uint16_t) &msg1);
-            write_flash_mem((uint16_t) &msg1,buffer);
-            user_msg_size = len+2;
-	        store_settings(demo_mode, user_msg_size, user_id, plockout);
-            initPatternZero();
-            print_settings(demo_mode, user_msg_size, user_id, plockout);
-	        if (p_table == 0) {
-                setTopOfPattern();  // If we are playing pattern 0, restart it.
-            }
-#endif
+            user_msg_size = len+3;
+            store_settings(demo_mode, user_msg_size, user_id, plockout);
+            good_ee_pattern = 0x03;
+            if (p_table == 0) p_count = 0;
             break;
+            
         default:
             putsUSBUSART((char *) "unknown command\r\n");
               // want a drop though      

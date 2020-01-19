@@ -19,7 +19,7 @@
 //      Boston, MA  02110-1301, USA.
 //
 //**********************************************************************
-i
+
 #ifndef SYSTEM_CONFIG_H
 #define SYSTEM_CONFIG_H
 

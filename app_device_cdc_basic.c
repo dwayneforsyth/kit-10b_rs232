@@ -139,10 +139,8 @@ void APP_DeviceCDCBasicDemoTasks()
         {
             if ((readBuffer[offset] == 0x0D) || (readBuffer[offset] == 0x0A)) {
                 readBuffer[offset] = 0;
-                if (offset != 0) {
-                    ParseBlinkieCommand(readBuffer);
-                    CDCTxService();
-                }
+                ParseBlinkieCommand(readBuffer);
+                CDCTxService();
                 memcpy(readBuffer,readBuffer+offset+1,numBytesRead-i-1);
                 offset = 0;
             } else {

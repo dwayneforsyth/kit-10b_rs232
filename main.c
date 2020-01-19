@@ -128,13 +128,7 @@ void main(void) {
     
     InitializeSystem();
     
-    demo_mode = Read_b_eep(0x00);
-    user_msg_size  = Read_b_eep(0x01);
-    user_id = Read_b_eep(0x02);
-    plockout[0] = Read_b_eep(0x03);
-    plockout[1] = Read_b_eep(0x04);
-    plockout[2] = Read_b_eep(0x05);
-    plockout[3] = Read_b_eep(0x06);
+    load_settings();
     
     while(1)
     {
