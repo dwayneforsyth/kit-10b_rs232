@@ -82,16 +82,6 @@ void update_pattern() {
       for (i=0;i<16;i++) {
          temp_in = get_next_pattern_byte();
          led_row = i*8;
-         led_data[led_row+0].red = (temp_in & 0x80) ? (0x07) : (0x00);
-         led_data[led_row+1].red = (temp_in & 0x40) ? (0x07) : (0x00);
-         led_data[led_row+2].red = (temp_in & 0x20) ? (0x07) : (0x00);
-         led_data[led_row+3].red = (temp_in & 0x10) ? (0x07) : (0x00);
-         led_data[led_row+4].red = (temp_in & 0x08) ? (0x07) : (0x00);
-         led_data[led_row+5].red = (temp_in & 0x04) ? (0x07) : (0x00);
-         led_data[led_row+6].red = (temp_in & 0x02) ? (0x07) : (0x00);
-         led_data[led_row+7].red = (temp_in & 0x01) ? (0x07) : (0x00);
-
-         temp_in = get_next_pattern_byte();
          led_data[led_row+0].green = (temp_in & 0x80) ? (0x07) : (0x00);
          led_data[led_row+1].green = (temp_in & 0x40) ? (0x07) : (0x00);
          led_data[led_row+2].green = (temp_in & 0x20) ? (0x07) : (0x00);
@@ -100,6 +90,16 @@ void update_pattern() {
          led_data[led_row+5].green = (temp_in & 0x04) ? (0x07) : (0x00);
          led_data[led_row+6].green = (temp_in & 0x02) ? (0x07) : (0x00);
          led_data[led_row+7].green = (temp_in & 0x01) ? (0x07) : (0x00);
+
+         temp_in = get_next_pattern_byte();
+         led_data[led_row+0].red = (temp_in & 0x80) ? (0x07) : (0x00);
+         led_data[led_row+1].red = (temp_in & 0x40) ? (0x07) : (0x00);
+         led_data[led_row+2].red = (temp_in & 0x20) ? (0x07) : (0x00);
+         led_data[led_row+3].red = (temp_in & 0x10) ? (0x07) : (0x00);
+         led_data[led_row+4].red = (temp_in & 0x08) ? (0x07) : (0x00);
+         led_data[led_row+5].red = (temp_in & 0x04) ? (0x07) : (0x00);
+         led_data[led_row+6].red = (temp_in & 0x02) ? (0x07) : (0x00);
+         led_data[led_row+7].red = (temp_in & 0x01) ? (0x07) : (0x00);
       }
       break;
    case 2:
