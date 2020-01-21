@@ -22,8 +22,14 @@
 
 #ifndef MAIN_H
 #define MAIN_H
+
+#include <stdint.h>
+#include <stdbool.h>
+
 void next_pattern(void);
 void back_pattern(void);
+void set_pattern(uint8_t number);
+
 extern uint8_t p_table;
 extern uint8_t demo_mode;
 extern bool run;

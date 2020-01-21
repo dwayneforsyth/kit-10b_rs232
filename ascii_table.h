@@ -22,10 +22,11 @@
 
 #ifndef ASCII_TABLE_H
 #define ASCII_TABLE_H
-struct s {
-    unsigned char sl;
-    char ch[5];
-};
 
-#define table_count 11 
+#include <stdint.h>
+
+struct s {
+    uint8_t sl;
+    uint8_t ch[5];
+};
 #endif

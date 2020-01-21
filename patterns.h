@@ -23,18 +23,23 @@
 #ifndef PATTERNS_H
 #define PATTERNS_H
 
+#include <stdbool.h>
+#include <stdint.h>
+
+#define MAX_TABLE_COUNT 18
+
 //uint8_t get_next_pattern_byte(uint8_t pattern);
 uint8_t get_next_pattern_byte();
 //uint8_t pattern_done(uint8_t pattern);
 uint8_t pattern_done();
-inline bool topOfPattern(void);
-inline void setTopOfPattern(void);
+bool topOfPattern(void);
+void setTopOfPattern(void);
 void initPatternTable(void);
 uint8_t packedRead(uint16_t, bool);
 
 unsigned char *patterns[];
 extern const struct s chardata[];
 extern uint8_t user_msg_size;
-extern uint16_t pattern_size[];
-extern uint8_t pattern_demo_loops[];
+extern const uint16_t pattern_size[];
+extern const uint8_t pattern_demo_loops[];
 #endif

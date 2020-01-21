@@ -32,7 +32,6 @@ struct s {
     char ch[5];
 };
 
-#define table_count 18   //bad Dwayne has 2nd copy of this in patterns_4x4x4.c
 extern const unsigned char *patterns[];
 extern const unsigned int pattern_size[];
 extern const unsigned char pattern_demo_loops[];

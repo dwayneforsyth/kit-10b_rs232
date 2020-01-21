@@ -22,6 +22,7 @@
 // DF1 - test planes
 //**********************************************************************
 #include <stdint.h>
+#include "patterns.h"
 
 const  uint8_t pattern0[] = {
      0x01,0x10,
@@ -2035,11 +2036,8 @@ const struct s chardata[] = {
    {{ 0x04 }, { 0x14, 0x22, 0x14, 0x22, 0x94 }}  // 0x7D invalid character     
 };
 
-
-#define table_count 18  // bad dwayne has a 2nd copy of this in main.c
-
 // not able to make this const! if you try all the address get set to 0x0000
-unsigned char *patterns[table_count+1] = {
+unsigned char *patterns[MAX_TABLE_COUNT+1] = {
    (unsigned char *)pattern0,
    (unsigned char *)pattern1,
    (unsigned char *)pattern2,
@@ -2061,7 +2059,7 @@ unsigned char *patterns[table_count+1] = {
    (unsigned char *)pattern18
 };
 
-const unsigned int pattern_size[table_count+1] = {
+const uint16_t pattern_size[MAX_TABLE_COUNT+1] = {
    sizeof(pattern0),
    sizeof(pattern1),
    sizeof(pattern2),
@@ -2083,7 +2081,7 @@ const unsigned int pattern_size[table_count+1] = {
    sizeof(pattern18)
 }; 
 
-const unsigned char pattern_demo_loops[table_count+1] = {
+const unsigned char pattern_demo_loops[MAX_TABLE_COUNT+1] = {
    6,
    30,
    13,

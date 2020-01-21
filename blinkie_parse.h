@@ -24,5 +24,6 @@
 #define BLINKIE_PARSE_H
 
 void ParseBlinkieCommand( char * cLine);
+void load_settings(void);
 
 #endif

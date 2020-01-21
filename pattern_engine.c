@@ -303,7 +303,7 @@ void add_and_shift( uint8_t red_in, uint8_t green_in) {
 }
 
 void next_pattern(void) {
-      p_table = (p_table >= table_count) ? (0):(p_table+1);
+      p_table = (p_table >= MAX_TABLE_COUNT) ? (0):(p_table+1);
       p_count = 0;
       demo_loops = pattern_demo_loops[p_table];
 //      sprintf(debugString, "Up to pattern %d %d", p_table, demo_loops);
@@ -311,13 +311,18 @@ void next_pattern(void) {
 }
 
 void back_pattern(void) {
-     p_table = (p_table < 1) ? (table_count):(p_table-1);
+     p_table = (p_table < 1) ? (MAX_TABLE_COUNT):(p_table-1);
      p_count = 0;
      demo_loops = pattern_demo_loops[p_table];
 //     sprintf(debugString, "Down to pattern %d %d", p_table, demo_loops);
 // 	 debugOut(debugString);
 }
 
+void set_pattern(uint8_t number) {
+     p_table = (number > MAX_TABLE_COUNT)? MAX_TABLE_COUNT:number;
+     p_count = 0;
+     demo_loops = pattern_demo_loops[p_table];
+}
 
 void clear_display() {
    uint8_t i;

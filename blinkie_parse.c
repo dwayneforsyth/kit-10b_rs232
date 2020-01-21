@@ -86,24 +86,45 @@ void ParseBlinkieCommand( char * cLine) {
     }
 
     switch (cLine[0]) {
-        case 'F':
-            next_pattern();
-            break;
-            
-        case 'B':
-            back_pattern();
+        case 'P':
+        case 'p':
+            if (len > 1) {
+                if (cLine[1] == '+') {
+                    next_pattern();
+                } else if (cLine[1] == '-') {
+                    back_pattern();
+                } else {
+                    set_pattern( atoi(&cLine[1]));
+                }
+            }
+            sprintf(buffer,"P=%d\r\n",p_table);
+            putsUSBUSART(buffer);
             break;
             
         case 'R':
-            run = true;
-            break;
-            
-        case 'S':
-            run = false;
+        case 'r':
+           if (len > 1) {
+                if (cLine[1] == '0') {
+                    run = false;
+                } else if (cLine[1] == '1') {
+                    run = true;
+                }
+            }
+            sprintf(buffer,"R=%d\r\n",run);
+            putsUSBUSART(buffer);
             break;
             
         case 'D':
-            demo_mode = true;
+        case 'd':
+           if (len > 1) {
+                if (cLine[1] == '0') {
+                    demo_mode = false;
+                } else if (cLine[1] == '1') {
+                    demo_mode = true;
+                }
+            }
+            sprintf(buffer,"D=%d\r\n",demo_mode);
+            putsUSBUSART(buffer);
             break;
             
         case 'C':
@@ -168,19 +189,19 @@ void doMenu(void) {
                 putsUSBUSART("8x16 Bi-Color Matrix\r\n==================\r\n");
                 break;
             case 4: 
-                putsUSBUSART("Commands:\r\n I - info\r\n F - Next Pattern\r\n B - previous Pattern\r\n");
+                putsUSBUSART("Commands:\r\n I : info\r\n P+ : Next Pattern\r\n P- : previous Pattern\r\n");
                 break;
             case 5:
-                putsUSBUSART(" S - Stop Pattern\r\n R - resume Pattern\r\n");
+                putsUSBUSART(" P[number] : switch to pattern\r\n R- : Stop Pattern\r\n R+ : resume Pattern\r\n");
                 break;
             case 6:
-                putsUSBUSART(" C{[x][y][v]}+ Set LEDs\r\n");
+                putsUSBUSART(" C{[x][y][v]}+ : Set LEDs\r\n");
                 break;
             case 7:
-                putsUSBUSART(" M[msg] - ascii message to display\r\n");
+                putsUSBUSART(" M[msg] : ascii message to display\r\n");
                 break;
             case 8:
-                putsUSBUSART(" U[number] - read and set User id\r\n");
+                putsUSBUSART(" U[number] : read and set User id\r\n");
                 break;
             case 9:
                 putsUSBUSART("==================\r\n");
