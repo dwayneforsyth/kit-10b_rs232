@@ -158,7 +158,7 @@ void ParseBlinkieCommand( char * cLine) {
                 Write_b_eep(i+2, cLine[i]);
             }
             user_msg_size = len+3;
-            store_settings(demo_mode, user_msg_size, user_id, plockout);
+            Write_b_eep(SETTING_EE_START+1, user_msg_size);
             good_ee_pattern = 0x03;
             if (p_table == 0) p_count = 0;
             break;
@@ -166,7 +166,9 @@ void ParseBlinkieCommand( char * cLine) {
         default:
             putsUSBUSART((char *) "unknown command\r\n");
               // want a drop though      
-        case 'I':
+        case 'H':
+        case 'h':
+        case '?':
             menuState = 1;
             break;
     }
@@ -189,13 +191,13 @@ void doMenu(void) {
                 putsUSBUSART("8x16 Bi-Color Matrix\r\n==================\r\n");
                 break;
             case 4: 
-                putsUSBUSART("Commands:\r\n I : info\r\n P+ : Next Pattern\r\n P- : previous Pattern\r\n");
+                putsUSBUSART("Commands:\r\n H : help\r\n P+ : Next Pattern\r\n P- : Previous Pattern\r\n");
                 break;
             case 5:
-                putsUSBUSART(" P[number] : switch to pattern\r\n R- : Stop Pattern\r\n R+ : resume Pattern\r\n");
+                putsUSBUSART(" P[number] : switch to pattern\r\n R0 : Stop Pattern\r\n R1 : Resume Pattern\r\n");
                 break;
             case 6:
-                putsUSBUSART(" C{[x][y][v]}+ : Set LEDs\r\n");
+                putsUSBUSART(" D0 : Demo off\r\n D1 : Demo on\r\n C{[x][y][v]}+ : Set LEDs\r\n");
                 break;
             case 7:
                 putsUSBUSART(" M[msg] : ascii message to display\r\n");
