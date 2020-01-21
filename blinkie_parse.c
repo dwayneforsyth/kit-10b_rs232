@@ -73,12 +73,65 @@ void print_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, u
 
 }
 
+void UserMessage( char * cLine) {
+    uint8_t len = strlen(cLine);
+    uint8_t i,j;
+    char buffer[80];
+
+    if (len>=1) {
+        Write_b_eep(0x00, 0x03); // pattern = 3
+        Write_b_eep(0x01, 0x03); // speed = 3
+        Write_b_eep(0x02, 0x03); // color = red+green
+        for (i=3,j=0;j<len;i++,j++) {
+           // handle esc code (used for color)
+           if ((cLine[j] == '\') && ((j+1)<len)) {
+	       j++;
+	       if (cLine[j] == '1') {
+                   Write_b_eep(i, 0x01);
+		} else if (cLine[j] == '2') {
+                   Write_b_eep(i, 0x02);
+	        } else if (cLine[j] == '3') {
+                   Write_b_eep(i, 0x03);
+		} else {
+                   Write_b_eep(i, cLine[j]);
+	        }
+	    } else {
+                Write_b_eep(i, cLine[j]);
+            }
+            user_msg_size = i;
+            Write_b_eep(SETTING_EE_START+1, user_msg_size);
+            good_ee_pattern = 0x03;
+
+	    // if pattern 0 is active, reset the counter
+            if (p_table == 0) p_count = 0;
+        }
+
+	memcpy(buffer,"M=\'",3);
+	for (i=0,j=3;i<user_msg_size-3;i++,j++) {
+            buffer[j] = Read_b_eep(SETTING_EE_START+3+i);
+	    if (buffer[j] <4) {
+	        // we have a color change token
+	        if (buffer[j] == 1) {
+	            memcpy(&buffer[j],"[Red]",5); j+=5;
+		} else if (buffer[j] == 2) {
+	            memcpy(&buffer[j],"[Green]",7); j+=7;
+		} else if (buffer[j] == 3) {
+	            memcpy(&buffer[j],"[Orange]",8); j+=8;
+		}
+            }
+        }
+	memcopy(&buffer[j],"\'\r\n\0",4);
+        putsUSBUSART(buffer);
+    }
+}
+
+
 uint16_t p_count=0;
 void ParseBlinkieCommand( char * cLine) {
 
     uint8_t len = strlen(cLine);
     uint8_t i,x,y,v;
-    char buffer[40];
+    char buffer[10];
     
     if (len == 0) {
         menuState = 1;
@@ -122,6 +175,7 @@ void ParseBlinkieCommand( char * cLine) {
                 } else if (cLine[1] == '1') {
                     demo_mode = true;
                 }
+                Write_b_eep(SETTING_EE_START, demo_mode);
             }
             sprintf(buffer,"D=%d\r\n",demo_mode);
             putsUSBUSART(buffer);
@@ -145,22 +199,14 @@ void ParseBlinkieCommand( char * cLine) {
         case 'U':
             if (len>1) {
                 user_id = atoi(&cLine[1]);
-                store_settings(demo_mode, user_msg_size, user_id, plockout);
+                Write_b_eep(SETTING_EE_START+2, user_id);
             }
-            print_settings(demo_mode, user_msg_size, user_id, plockout);
+            sprintf(buffer,"U=%d\r\n",user_id);
+            putsUSBUSART(buffer);
             break;
             
         case 'M':
-	        Write_b_eep(0x00, 0x03); // pattern = 3
-            Write_b_eep(0x01, 0x03); // speed = 3
-            Write_b_eep(0x02, 0x03); // color = red+green
-            for (i=1;i<len;i++) {
-                Write_b_eep(i+2, cLine[i]);
-            }
-            user_msg_size = len+3;
-            Write_b_eep(SETTING_EE_START+1, user_msg_size);
-            good_ee_pattern = 0x03;
-            if (p_table == 0) p_count = 0;
+	    UserMessage(&cLine[1]);
             break;
             
         default:
