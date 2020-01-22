@@ -130,12 +130,18 @@ void UserMessage( char * cLine) {
     putsUSBUSART(buffer);
 }
 
+uint8_t CharToDec(char c){
+  if(c>='0' && c<='9') return c-'0';
+  if(c>='a' && c<='f') return c-'a'+10;
+  if(c>='A' && c<='F') return c-'A'+10;
+  return 0;
+}
 
 void ParseBlinkieCommand( char * cLine) {
 
     uint8_t len = strlen(cLine);
     uint8_t i,x,y,v;
-    char buffer[10];
+    char buffer[255];
     
     if (len == 0) {
         menuState = 1;
@@ -186,17 +192,19 @@ void ParseBlinkieCommand( char * cLine) {
             break;
             
         case 'C':
+        case 'c':
             // passing pointer, non blocking, 2nd print trashes buffer
 //          sprintf(buffer,"len=%d\r\n",len);
 //          putsUSBUSART(buffer);
             for (i=0;i<(len-1);i+=3) {
-                x = cLine[i+1]-'0';
-                y = cLine[i+2]-'0';
-                v = cLine[i+3]-'0';
+                x = CharToDec(cLine[i+1]);
+                y = CharToDec(cLine[i+2]);
+                v = CharToDec(cLine[i+3]);
+                if (y>7) {y = 7;}
                 sprintf(buffer,"x=%d,y=%d,v=%d,\r\n",x,y,v);
                 putsUSBUSART(buffer);
-                led_data[x*8+y].red = (v & 0x01);
-                led_data[x*8+y].green = (v & 0x02);
+                led_data[x*8+y].red = (v & 0x01)? 15:0;
+                led_data[x*8+y].green = (v & 0x02)? 15:0;
             }
             break;
             
