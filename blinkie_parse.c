@@ -37,6 +37,7 @@
 #include <EEP.H>
 
 static uint8_t menuState = 0;
+uint16_t p_count=0;
 
 void store_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, uint8_t plockout[]) {
     char buffer[32];
@@ -83,50 +84,52 @@ void UserMessage( char * cLine) {
         Write_b_eep(0x01, 0x03); // speed = 3
         Write_b_eep(0x02, 0x03); // color = red+green
         for (i=3,j=0;j<len;i++,j++) {
-           // handle esc code (used for color)
-           if ((cLine[j] == '\') && ((j+1)<len)) {
-	       j++;
-	       if (cLine[j] == '1') {
-                   Write_b_eep(i, 0x01);
-		} else if (cLine[j] == '2') {
-                   Write_b_eep(i, 0x02);
-	        } else if (cLine[j] == '3') {
-                   Write_b_eep(i, 0x03);
-		} else {
-                   Write_b_eep(i, cLine[j]);
-	        }
-	    } else {
+            // handle esc code (used for color)
+            if ((cLine[j] == '\\' ) && ((j+1)<len)) {
+                j++;
+	            if (cLine[j] == '1') {
+                    Write_b_eep(i, 0x01);
+                } else if (cLine[j] == '2') {
+                    Write_b_eep(i, 0x02);
+                } else if (cLine[j] == '3') {
+                    Write_b_eep(i, 0x03);
+	            } else {
+                    Write_b_eep(i, cLine[j]);
+                }
+            } else {
                 Write_b_eep(i, cLine[j]);
             }
-            user_msg_size = i;
-            Write_b_eep(SETTING_EE_START+1, user_msg_size);
-            good_ee_pattern = 0x03;
+        }
+        user_msg_size = i+1;
+        Write_b_eep(SETTING_EE_START+1, user_msg_size);
+        good_ee_pattern = 0x03;
 
 	    // if pattern 0 is active, reset the counter
-            if (p_table == 0) p_count = 0;
-        }
-
-	memcpy(buffer,"M=\'",3);
-	for (i=0,j=3;i<user_msg_size-3;i++,j++) {
-            buffer[j] = Read_b_eep(SETTING_EE_START+3+i);
-	    if (buffer[j] <4) {
-	        // we have a color change token
-	        if (buffer[j] == 1) {
-	            memcpy(&buffer[j],"[Red]",5); j+=5;
-		} else if (buffer[j] == 2) {
-	            memcpy(&buffer[j],"[Green]",7); j+=7;
-		} else if (buffer[j] == 3) {
-	            memcpy(&buffer[j],"[Orange]",8); j+=8;
-		}
+        if (p_table == 0) p_count = 0;
+    }
+    
+    // initial flashed value is 0xff
+    if (user_msg_size == 255) {user_msg_size =4;}
+    
+    memcpy(buffer,"M=\'",3);
+    for (i=3,j=3;i<user_msg_size;i++,j++) {
+        buffer[j] = Read_b_eep(i);
+        if (buffer[j] <4) {
+            // we have a color change token
+            if (buffer[j] == 1) {
+                memcpy(&buffer[j],"[Red]",5); j+=4;
+            } else if (buffer[j] == 2) {
+	            memcpy(&buffer[j],"[Green]",7); j+=6;
+            } else if (buffer[j] == 3) {
+                memcpy(&buffer[j],"[Orange]",8); j+=7;
             }
         }
-	memcopy(&buffer[j],"\'\r\n\0",4);
-        putsUSBUSART(buffer);
     }
+    memcpy(&buffer[j-1],"\'\r\n\0",4);
+    putsUSBUSART(buffer);
 }
 
 
-uint16_t p_count=0;
 void ParseBlinkieCommand( char * cLine) {
 
     uint8_t len = strlen(cLine);
@@ -216,6 +219,11 @@ void ParseBlinkieCommand( char * cLine) {
         case 'h':
         case '?':
             menuState = 1;
+            break;
+        
+        case 'I':
+        case 'i':
+            print_settings(demo_mode, user_msg_size, user_id, plockout);
             break;
     }
 }      
