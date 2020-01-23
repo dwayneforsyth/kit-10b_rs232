@@ -61,6 +61,10 @@ uint8_t fader_cycle=0;
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+//**********************************************************************
+// updates the LEDs based on the pattern being run
+//
+//**********************************************************************
 void update_pattern() {
 
    uint8_t i, j, temp_in, red_in=1, green_in=1, red_out=1, green_out=0;
@@ -168,6 +172,11 @@ case 5:
    }
 }
 
+//**********************************************************************
+// test if the pattern is done
+//
+//**********************************************************************
+
 bool pattern_done()
 {
    if ((p_table == 0) && (good_ee_pattern == 3)) {
@@ -178,6 +187,11 @@ bool pattern_done()
    
 }
 
+//**********************************************************************
+// returns the next byte of data.
+//
+//**********************************************************************
+
 uint8_t get_next_pattern_byte( ) {
     if ((p_table == 0) && (good_ee_pattern == 3)) {
         return(Read_b_eep(p_count++));
@@ -185,6 +199,11 @@ uint8_t get_next_pattern_byte( ) {
         return(patterns[p_table][p_count++]);
     }
 }
+
+//**********************************************************************
+// Randon number generater created by Ward C.
+//
+//**********************************************************************
 
 uint16_t brand()
 {
@@ -198,6 +217,10 @@ uint16_t brand()
 }
 
 
+//**********************************************************************
+// Deal with the push buttons
+//
+//**********************************************************************
 
 void handle_push_button() {
 
@@ -242,6 +265,11 @@ void handle_push_button() {
 #endif
 }
 
+//**********************************************************************
+// Displays a given char on the screen
+//
+//**********************************************************************
+
 uint8_t display_char( uint8_t row, uint8_t char_in ) {
      uint8_t step, red_in, green_in, offset;
 
@@ -276,6 +304,12 @@ uint8_t display_char( uint8_t row, uint8_t char_in ) {
      return(row);
 }
 
+//**********************************************************************
+// Shifts all the data on the screen left, updates the right most
+// column with the new data.
+//
+//**********************************************************************
+
 void add_and_shift( uint8_t red_in, uint8_t green_in) {
 
    uint8_t i;
@@ -302,6 +336,11 @@ void add_and_shift( uint8_t red_in, uint8_t green_in) {
    led_data[127].green = (green_in & 0x01) ? (0x07) : (0x00);
 }
 
+//**********************************************************************
+// Setup to display the next pattern id.
+//
+//**********************************************************************
+
 void next_pattern(void) {
       p_table = (p_table >= MAX_TABLE_COUNT) ? (0):(p_table+1);
       p_count = 0;
@@ -309,6 +348,11 @@ void next_pattern(void) {
 //      sprintf(debugString, "Up to pattern %d %d", p_table, demo_loops);
 // 	  debugOut(debugString);
 }
+
+//**********************************************************************
+// Setup to display the previous pattern id.
+//
+//**********************************************************************
 
 void back_pattern(void) {
      p_table = (p_table < 1) ? (MAX_TABLE_COUNT):(p_table-1);
@@ -318,11 +362,21 @@ void back_pattern(void) {
 // 	 debugOut(debugString);
 }
 
+//**********************************************************************
+// display the pattern id requested
+//
+//**********************************************************************
+
 void set_pattern(uint8_t number) {
      p_table = (number > MAX_TABLE_COUNT)? MAX_TABLE_COUNT:number;
      p_count = 0;
      demo_loops = pattern_demo_loops[p_table];
 }
+
+//**********************************************************************
+// Turn off all the LEDs.
+//
+//**********************************************************************
 
 void clear_display() {
    uint8_t i;

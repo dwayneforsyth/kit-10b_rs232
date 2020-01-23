@@ -38,6 +38,13 @@
 
 static uint8_t menuState = 0;
 uint16_t p_count=0;
+extern uint8_t good_ee_pattern;
+extern uint8_t demo_loops;
+
+//**********************************************************************
+// Stores all the settings from flash except the user defined message.
+//
+//**********************************************************************
 
 void store_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, uint8_t plockout[]) {
     char buffer[32];
@@ -52,7 +59,10 @@ void store_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, u
     Write_b_eep(SETTING_EE_START+6, plockout[3]);
 }
 
-extern uint8_t good_ee_pattern;
+//**********************************************************************
+// Loads all the settings from flash except the user defined message.
+//
+//**********************************************************************
 void load_settings(void) {
     demo_mode = Read_b_eep(SETTING_EE_START);
     user_msg_size  = Read_b_eep(SETTING_EE_START+1);
@@ -64,15 +74,25 @@ void load_settings(void) {
     good_ee_pattern = Read_b_eep(0x00);
 }
 
-extern uint8_t demo_loops;
+//**********************************************************************
+// prints a number of settings all at once. Used for debugging.
+//
+//**********************************************************************
+
 void print_settings(uint8_t demo_mode, uint8_t user_msg_size, uint8_t user_id, uint8_t plockout[]) {
     char buffer[80];
 
-    sprintf(buffer,"demo=%d, msize=%d, id=%d, pattern=%d, run=%d, demo=%d, loops=%d plock=%X%X\r\n",
-                demo_mode, user_msg_size, user_id, p_table, run, demo_mode, demo_loops, plockout[0],plockout[1]);
+    sprintf(buffer,"D=%d, msize=%d, U=%d, P=%d, R=%d, loops=%d plock=%X%X\r\n",
+                demo_mode, user_msg_size, user_id, p_table, run, demo_loops, plockout[0],plockout[1]);
     putsUSBUSART(buffer);
 
 }
+
+//**********************************************************************
+// Handles all the logic for the Message (M) command. The "M" has been
+// removed from the input line already.
+//
+//**********************************************************************
 
 void UserMessage( char * cLine) {
     uint8_t len = strlen(cLine);
@@ -130,12 +150,23 @@ void UserMessage( char * cLine) {
     putsUSBUSART(buffer);
 }
 
+//**********************************************************************
+// Converts ascii chars '0'-'9','A'-'F' to integer 0-15
+//
+//**********************************************************************
+
 uint8_t CharToDec(char c){
   if(c>='0' && c<='9') return c-'0';
   if(c>='a' && c<='f') return c-'a'+10;
   if(c>='A' && c<='F') return c-'A'+10;
   return 0;
 }
+
+//**********************************************************************
+// Gets a line of text from the USB Rx handler. Looks at the 1st char
+// to determine what needs to be done.
+//
+//**********************************************************************
 
 void ParseBlinkieCommand( char * cLine) {
 
@@ -235,7 +266,14 @@ void ParseBlinkieCommand( char * cLine) {
             print_settings(demo_mode, user_msg_size, user_id, plockout);
             break;
     }
-}      
+}
+
+//**********************************************************************
+// This prints the menu, We have a 64 byte tx buffer on the USB stack.
+// We need to send the data in chunks. The main loop calls this
+// function each cycle. Setting menuState to one starts the print
+// process. The USB tx buffer might be full before the print starts.
+//**********************************************************************
 
 void doMenu(void) {
     static uint8_t menuOldState;
