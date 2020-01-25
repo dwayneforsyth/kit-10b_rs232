@@ -289,7 +289,7 @@ void doMenu(void) {
                 putsUSBUSART("\r\n==================\r\n2DKits.com\r\n");
                 break;
             case 3:
-                putsUSBUSART("8x16 Bi-Color Matrix\r\n==================\r\n");
+                putsUSBUSART("8x16 Bi-Color Matrix\r\nV1.0\r\n==================\r\n");
                 break;
             case 4: 
                 putsUSBUSART("Commands:\r\n H : help\r\n P+ : Next Pattern\r\n P- : Previous Pattern\r\n");
