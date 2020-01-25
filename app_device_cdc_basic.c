@@ -137,7 +137,7 @@ void APP_DeviceCDCBasicDemoTasks()
         /* For every byte that was read... */
         for(i=0; i<numBytesRead; i++)
         {
-            if ((readBuffer[offset] == 0x0D) || (readBuffer[offset] == 0x0A)) {
+            if ((readBuffer[offset] == 0x0D) || (readBuffer[offset] == 0x0A) || offset >= CDC_DATA_IN_EP_SIZE) {
                 readBuffer[offset] = 0;
                 ParseBlinkieCommand(readBuffer);
                 CDCTxService();

@@ -54,6 +54,8 @@ extern uint8_t pattern_speed;
 #include "usb/usb_device_cdc.h"
 #include "usb/app_device_cdc_basic.h"
 
+#include "main.h"
+
 /** V A R I A B L E S ********************************************************/
 #if defined(__18CXX)
     #pragma udata
@@ -128,6 +130,7 @@ void main(void) {
     InitializeSystem();
     
     load_settings();
+    set_pattern(0);
     
     while(1)
     {

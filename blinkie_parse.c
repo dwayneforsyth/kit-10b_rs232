@@ -100,7 +100,7 @@ void UserMessage( char * cLine) {
     char buffer[255];
 
     if (len>=1) {
-        if (len > 124) {len=123;}
+        if (len >= 64) {len=63;}
         Write_b_eep(0x00, 0x03); // pattern = 3
         Write_b_eep(0x01, 0x03); // speed = 3
         Write_b_eep(0x02, 0x03); // color = red+green
@@ -298,7 +298,7 @@ void doMenu(void) {
                 putsUSBUSART(" P[number] : switch to pattern\r\n R0 : Stop Pattern\r\n R1 : Resume Pattern\r\n");
                 break;
             case 6:
-                putsUSBUSART(" D0 : Demo off\r\n D1 : Demo on\r\n C{[x][y][v]}+ : Set LEDs\r\n");
+                putsUSBUSART(" D0 : Demo off\r\n D1 : Demo on\r\n C{[x][y][v]}+ : Set LEDs x=0-9,A-F\r\n");
                 break;
             case 7:
                 putsUSBUSART(" M[msg] : ascii message to display\r\n");
