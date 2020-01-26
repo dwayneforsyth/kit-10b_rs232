@@ -179,8 +179,9 @@ void ParseBlinkieCommand( char * cLine) {
         return;
     }
 
+    if ((cLine[0]>='A' && cLine[0]<='Z')) {cLine[0] += 'a'-'A';}
+    
     switch (cLine[0]) {
-        case 'P':
         case 'p':
             if (len > 1) {
                 if (cLine[1] == '+') {
@@ -195,7 +196,6 @@ void ParseBlinkieCommand( char * cLine) {
             putsUSBUSART(buffer);
             break;
             
-        case 'R':
         case 'r':
            if (len > 1) {
                 if (cLine[1] == '0') {
@@ -208,7 +208,6 @@ void ParseBlinkieCommand( char * cLine) {
             putsUSBUSART(buffer);
             break;
             
-        case 'D':
         case 'd':
            if (len > 1) {
                 if (cLine[1] == '0') {
@@ -222,11 +221,7 @@ void ParseBlinkieCommand( char * cLine) {
             putsUSBUSART(buffer);
             break;
             
-        case 'C':
         case 'c':
-            // passing pointer, non blocking, 2nd print trashes buffer
-//          sprintf(buffer,"len=%d\r\n",len);
-//          putsUSBUSART(buffer);
             for (i=0;i<(len-1);i+=3) {
                 x = CharToDec(cLine[i+1]);
                 y = CharToDec(cLine[i+2]);
@@ -239,7 +234,7 @@ void ParseBlinkieCommand( char * cLine) {
             }
             break;
             
-        case 'U':
+        case 'u':
             if (len>1) {
                 user_id = atoi(&cLine[1]);
                 Write_b_eep(SETTING_EE_START+2, user_id);
@@ -248,20 +243,19 @@ void ParseBlinkieCommand( char * cLine) {
             putsUSBUSART(buffer);
             break;
             
-        case 'M':
+        case 'm':
 	    UserMessage(&cLine[1]);
             break;
             
         default:
-            putsUSBUSART((char *) "unknown command\r\n");
+            sprintf(buffer,"unknown command 0x%2.2X\r\n",cLine[0]);
+            putsUSBUSART(buffer);
               // want a drop though      
-        case 'H':
         case 'h':
         case '?':
             menuState = 1;
             break;
         
-        case 'I':
         case 'i':
             print_settings(demo_mode, user_msg_size, user_id, plockout);
             break;
