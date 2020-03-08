@@ -35,7 +35,7 @@ please contact mla_licensing@microchip.com
 
 static bool buttonPressed;
 static char buttonMessage[] = "Button pressed.\r\n";
-static uint8_t readBuffer[CDC_DATA_OUT_EP_SIZE];
+static uint8_t readBuffer[CDC_DATA_OUT_EP_SIZE+1];
 static uint8_t writeBuffer[CDC_DATA_IN_EP_SIZE];
 
 /*********************************************************************
@@ -137,11 +137,11 @@ void APP_DeviceCDCBasicDemoTasks()
         /* For every byte that was read... */
         for(i=0; i<numBytesRead; i++)
         {
-            if ((readBuffer[offset] == 0x0D) || (readBuffer[offset] == 0x0A) || offset >= CDC_DATA_IN_EP_SIZE) {
-                readBuffer[offset] = 0;
+            if ((readBuffer[offset+i] == 0x0D) || (readBuffer[offset+i] == 0x0A) || (offset+i) >= CDC_DATA_IN_EP_SIZE) {
+                readBuffer[offset+i] = 0;
                 ParseBlinkieCommand(readBuffer);
                 CDCTxService();
-                memcpy(readBuffer,readBuffer+offset+1,numBytesRead-i-1);
+                memcpy(readBuffer,readBuffer+offset+i,numBytesRead-i-1);
                 offset = 0;
             } else {
                 offset++;
