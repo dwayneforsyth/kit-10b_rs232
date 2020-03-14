@@ -969,7 +969,7 @@ const char pattern8[] =
 const char pattern9[] = 
        "\x03\x04"
        "\x01"
-       "   Fader does here";
+       "   Mad Scientist Union 3.1415 member";
 
 //**********************************************************************
 // bars
