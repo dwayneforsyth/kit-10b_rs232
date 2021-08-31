@@ -69,6 +69,12 @@ strobes led_data[128];
 #pragma config EBTR3    = OFF       // Block 3 Table Read Protect (Block 3 is not protected from table reads executed in other blocks)
 #pragma config EBTRB    = OFF       // Boot Block Table Read Protect (Boot block is not protected from table reads executed in other blocks)
 
+uint8_t reverse_u8(uint8_t x)
+{
+   const unsigned char * rev = "\x0\x8\x4\xC\x2\xA\x6\xE\x1\x9\x5\xD\x3\xB\x7\xF";
+   return rev[(x & 0xF0) >> 4] | (rev[x & 0x0F] << 4);
+}
+
 void strobe_LED(uint8_t red, uint8_t green, uint8_t col )
 {
 static uint8_t old_col = 0;
@@ -83,8 +89,8 @@ if (old_col!=col) {
     LATCbits.LATC6= (col & 4)? (1):(0);
     LATCbits.LATC7= (col & 8)? (1):(0);
 
-    PORTB = red;
-    PORTA = green;
+    PORTB = reverse_u8(red);
+    PORTA = reverse_u8(green);
   
     old_col = col;
     }

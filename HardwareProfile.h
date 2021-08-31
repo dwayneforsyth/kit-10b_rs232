@@ -39,8 +39,8 @@
 
 #define FLAG_FALSE 0
 #define FLAG_TRUE 1
-#define sw0                 PORTCbits.RC1
-#define sw1                 PORTEbits.RE3
+//#define sw0                 PORTCbits.RC1
+//#define sw1                 PORTEbits.RE3
 
 
     /*******************************************************************/

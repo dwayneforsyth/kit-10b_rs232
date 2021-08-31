@@ -33,9 +33,8 @@ please contact mla_licensing@microchip.com
 
 #define MAIN_RETURN void
 
-#define sw0                 PORTCbits.RC1
-#define sw1                 PORTEbits.RE3
-
+#define sw0                 PORTEbits.RE3
+#define sw1                 PORTCbits.RC1
 
 typedef struct {
    uint8_t red;
